@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>星幣拉霸</title>
+<title>幸運拉霸</title>
+<meta name="description" content="拉一把,試試手氣">
+<meta property="og:title" content="幸運拉霸">
+<meta property="og:description" content="拉一把,試試手氣">
 <style>
   :root {
     --bg1: #2a1a5e; --bg2: #1a1040;
@@ -83,7 +86,7 @@
   .slotitem canvas { width: 2.6em; height: 2.6em; }
   .slotitem span { font-size: 0.85em; color: var(--gold); }
   .slotitem.miss span { color: #8a7a90; }
-  .slotitem.miss canvas { filter: grayscale(1) brightness(0.6); }
+  .slotitem.miss canvas { opacity: 0.8; }
   @keyframes drop { from { transform: translateY(-2em); opacity: 0; } }
 
   .msg { height: 2.2em; margin-top: 0.7em; text-align: center; font-size: 1.15em; line-height: 2.2em; color: #fff; }
@@ -119,7 +122,7 @@
 </div>
 
 <div class="stage">
-  <div class="marquee"><div class="title">星幣拉霸</div></div>
+  <div class="marquee"><div class="title">幸運拉霸</div></div>
   <div class="cabinet">
     <div class="window"><div class="reels">
       <canvas id="r0" width="256" height="368"></canvas>
@@ -290,7 +293,12 @@ const SPRITES = SYMBOLS.map(s => {
   img.src = SHOP.img;
   return sp;
 });
-/* 畫一個圖案:u = 一格像素圖要放大幾倍;商號圖比像素圖大一圈(28 格) */
+const MISS_SPRITE = makeSprite((x, y) => {
+  const dx = x - C, dy = y - C;
+  if (Math.abs(dx) > 8 || Math.abs(dy) > 8) return null;
+  return (Math.abs(dx - dy) < 2.3 || Math.abs(dx + dy) < 2.3) ? "#8a7a90" : null;
+});
+/* 畫一個圖案:u =一格像素圖要放大幾倍;商號圖比像素圖大一圈(28 格) */
 function drawSym(c, idx, x, y, u) {
   const sp = SPRITES[idx];
   if (sp.photo) {
@@ -407,7 +415,9 @@ function finish() {
   const tray = el("tray"); const hint = tray.querySelector(".hint"); if (hint) hint.remove();
   const item = document.createElement("div"); item.className = "slotitem" + (res.win ? "" : " miss");
   const ic = document.createElement("canvas"); ic.width = 112; ic.height = 112;
-  drawSym(ic.getContext("2d"), res.symbols[0], 8, 8, 4);
+  const icx = ic.getContext("2d");
+  if (res.win) drawSym(icx, res.symbols[0], 8, 8, 4);
+  else { icx.imageSmoothingEnabled = false; icx.drawImage(MISS_SPRITE, 8, 8, 96, 96); }
   const tx = document.createElement("span"); tx.textContent = res.win ? "+" + res.prize : "沒中";
   item.appendChild(ic); item.appendChild(tx); tray.appendChild(item);
 

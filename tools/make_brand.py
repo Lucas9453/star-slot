@@ -42,7 +42,17 @@ def make_square(src, dst):
     return im.size
 
 
+def make_og(src, dst):
+    # link preview picture (LINE / FB): plain square, 600x600 JPG
+    im = center_square(Image.open(src).convert("RGB")).resize((600, 600), Image.LANCZOS)
+    im.save(dst, quality=88)
+    return im.size
+
+
 if __name__ == "__main__":
+    for name, src in (("og_haolilai.jpg", sys.argv[1]), ("og_benzun.jpg", sys.argv[2])):
+        p = os.path.join(OUT, name)
+        print(name, make_og(src, p), os.path.getsize(p))
     a = os.path.join(OUT, "haolilai.png")
     b = os.path.join(OUT, "benzun.png")
     print("haolilai", make_round(sys.argv[1], a), os.path.getsize(a))
