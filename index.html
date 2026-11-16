@@ -129,7 +129,7 @@
   @keyframes showTxt { from { transform: scale(0); } to { transform: scale(1); } }
 
   .tools { position: fixed; top: 0.6em; right: 0.6em; display: flex; gap: 0.5em; z-index: 6; }
-  .audition { position: fixed; left: 0; right: 0; bottom: 8px; z-index: 6; display: flex; gap: 6px; justify-content: center; align-items: center;
+  .audition { position: fixed; left: 0; right: 0; bottom: 8px; z-index: 6; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center;
               font-size: 12px; font-weight: 700; color: #cbbfe8; }
   .audition button, .tools button {font: inherit; font-size: 12px; font-weight: 700; background: #00000055; color: #cbbfe8; border: 1px solid #ffffff33; padding: 5px 9px; cursor: pointer; }
 </style>
@@ -148,7 +148,8 @@
 </div>
 
 <div class="audition" id="audition">
-  <span>v6 試聽</span>
+  <span>v7 試聽</span>
+  <button data-s="tease">緊張</button>
   <button data-s="miss">沒中</button>
   <button data-s="small">小獎</button>
   <button data-s="big">中獎</button>
@@ -405,7 +406,16 @@ function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch 
 const sfx = {
   pull() { noise(0.06, 0.25, 0, 1500); beep(260, 0.07, "square", 0.18, 0, 130); beep(130, 0.16, "sine", 0.55, 0.05, 65); },   // 喀 + 咚,不用鋸齒波(聽起來像屁聲)
   spin(sec) { for (let t = 0.1; t < sec; t += 0.075) beep(650 + Math.random() * 250, 0.03, "square", 0.07, t); },
-  tease(start, len) { beep(280, len, "triangle", 0.3, start, 1100); },       // 前兩個一樣時的拉高音
+  /* 前兩個一樣時的小緊張:一顆一顆往上爬的短音,越來越快,配越來越大聲的小鼓滾奏(不用滑音,滑音聽起來像屁聲) */
+  tease(start, len) {
+    let t = 0, i = 0;
+    while (t < len - 0.05) {
+      const f = 523 * Math.pow(2, i / 12);
+      beep(f, 0.07, "square", 0.1, start + t); beep(f * 2, 0.07, "sine", 0.12, start + t);
+      noise(0.04, 0.05 + 0.15 * (t / len), start + t, 3000);
+      t += Math.max(0.055, 0.14 - 0.008 * i); i++;
+    }
+  },       // 前兩個一樣時的拉高音
   stop() { beep(170, 0.14, "triangle", 0.6, 0, 75); beep(1300, 0.03, "square", 0.14); buzz(15); },
   miss() { beep(660, 0.14, "sine", 0.28); beep(494, 0.3, "sine", 0.28, 0.14); },   // 輕輕的「叮~咚」,乾淨的正弦波
   coins(start, sec, n) { for (let i = 0; i < n; i++) beep(1700 + Math.random() * 1700, 0.09, "sine", 0.14, start + Math.random() * sec); },
@@ -609,7 +619,7 @@ if (!TEST_MODE) el("audition").style.display = "none";
 el("audition").addEventListener("click", e => {
   const s = e.target.dataset.s; if (!s) return;
   audio();
-  if (s === "miss") sfx.miss(); else if (s === "small") sfx.win(false); else if (s === "big") sfx.win(true); else if (s === "A") sfx.jackpot(); else sfx.jackpotB();
+  if (s === "tease") sfx.tease(0, 1.75); else if (s === "miss") sfx.miss(); else if (s === "small") sfx.win(false); else if (s === "big") sfx.win(true); else if (s === "A") sfx.jackpot(); else sfx.jackpotB();
 });
 el("shop").addEventListener("click", () => { location.search = "?shop=" + (SHOP_ID === "haolilai" ? "benzun" : "haolilai"); });
 el("mute").addEventListener("click", () => { muted = !muted; el("mute").textContent = "音效:" + (muted ? "關" : "開"); });
