@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>星幣拉霸</title>
+<style>
+  :root {
+    --bg1: #2a1a5e; --bg2: #1a1040;
+    --red: #e23a3a; --red-d: #a82020; --red-l: #ff6a5a;
+    --gold: #f7c531; --gold-d: #b8860b;
+    --dark: #2a1020; --panel: #3a1626;
+    --ink: #f6e9c8;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: radial-gradient(circle at 50% 30%, var(--bg1), var(--bg2));
+    color: var(--ink);
+    font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+    font-weight: 900;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; user-select: none; -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+
+  .stage { font-size: min(4vw, 2.15vh, 19px); position: relative; padding-right: 2.6em; }
+
+  /* marquee title */
+  .marquee {
+    width: 19em; margin: 0 auto -0.3em; padding: 0.5em; position: relative; z-index: 2;
+    background-color: #7a3b00;
+    background-image: radial-gradient(circle, #fff3a0 0 28%, #f7c531 30% 42%, transparent 46%);
+    background-size: 1em 1em;
+    animation: blink 0.7s steps(1) infinite;
+    box-shadow: 0 0.3em 0 #00000055;
+  }
+  @keyframes blink { 50% { background-position: 0.5em 0.5em; filter: brightness(0.8); } }
+  .marquee .title {
+    background: var(--dark); color: var(--gold);
+    text-align: center; font-size: 1.9em; letter-spacing: 0.14em; text-indent: 0.14em; white-space: nowrap; padding: 0.25em 0 0.3em;
+    text-shadow: 0.08em 0.08em 0 #7a3b00;
+  }
+
+  /* cabinet */
+  .cabinet {
+    width: 21em; background: var(--red); position: relative;
+    padding: 1.6em 1.2em 1.4em;
+    box-shadow:
+      inset 0.5em 0 0 var(--red-l), inset -0.5em 0 0 var(--red-d),
+      inset 0 -0.7em 0 var(--red-d), 0 0.6em 0 #00000066;
+  }
+  .window {
+    background: var(--gold); padding: 0.35em;
+    box-shadow: 0 0 0 0.25em var(--gold-d);
+  }
+  .reels { background: #1a2238; padding: 0.4em; display: flex; gap: 0.4em; }
+  .reels canvas {
+    flex: 1; min-width: 0; width: 100%; aspect-ratio: 32 / 46; display: block;
+    background: #f4f1e4;
+  }
+
+  .row { display: flex; align-items: center; gap: 0.8em; margin-top: 1.1em; }
+  .lamp { width: 1.5em; height: 1.5em; flex: none; box-shadow: inset -0.25em -0.25em 0 #00000040, inset 0.2em 0.2em 0 #ffffff66; }
+  .lamp.g { background: #35d07a; } .lamp.y { background: #ffd83d; }
+  .lamp.on { animation: lamp 0.25s steps(1) infinite; }
+  @keyframes lamp { 50% { filter: brightness(1.8); } }
+  .counter {
+    flex: 1; background: var(--panel); text-align: center; padding: 0.45em 0;
+    font-size: 1.25em; letter-spacing: 0.1em; color: #e8d4ff;
+    box-shadow: inset 0 0.2em 0 #00000055;
+  }
+
+  .tray {
+    margin-top: 1em; background: #160a14; min-height: 4.6em; padding: 0.6em 0.7em 0.9em;
+    display: flex; align-items: center; gap: 0.7em; position: relative;
+    box-shadow: inset 0 0.25em 0 #00000088;
+  }
+  .tray::after { content: ""; position: absolute; left: 0.5em; right: 0.5em; bottom: 0.35em; height: 0.22em; background: #8fd8ff; }
+  .tray .hint { color: #7a6a80; font-size: 0.9em; font-weight: 700; }
+  .slotitem { display: flex; flex-direction: column; align-items: center; gap: 0.1em; animation: drop 0.35s steps(4); }
+  .slotitem canvas { width: 2.6em; height: 2.6em; }
+  .slotitem span { font-size: 0.85em; color: var(--gold); }
+  .slotitem.miss span { color: #8a7a90; }
+  .slotitem.miss canvas { filter: grayscale(1) brightness(0.6); }
+  @keyframes drop { from { transform: translateY(-2em); opacity: 0; } }
+
+  .msg { height: 2.2em; margin-top: 0.7em; text-align: center; font-size: 1.15em; line-height: 2.2em; color: #fff; }
+  .msg.win { color: var(--gold); animation: pop 0.4s steps(3); }
+  @keyframes pop { from { transform: scale(1.6); } }
+
+  .btn {
+    display: block; width: 100%; margin-top: 0.5em; border: 0; cursor: pointer;
+    font: inherit; font-size: 1.5em; letter-spacing: 0.3em; padding: 0.45em 0 0.55em;
+    color: #4a2500; background: var(--gold);
+    box-shadow: inset 0 -0.3em 0 var(--gold-d), inset 0 0.2em 0 #fff3a0;
+  }
+  .btn:active:not(:disabled) { transform: translateY(0.15em); box-shadow: inset 0 -0.12em 0 var(--gold-d); }
+  .btn:disabled { background: #7a6a5a; color: #3a3030; box-shadow: inset 0 -0.3em 0 #4a4038; cursor: default; }
+
+  /* lever */
+  .lever { position: absolute; right: 0; top: 9.5em; width: 2.6em; height: 9em; cursor: pointer; }
+  .lever .base { position: absolute; left: 0; bottom: 0; width: 1.6em; height: 4.2em; background: #b9d8e8; box-shadow: inset -0.35em 0 0 #7fa6bb, inset 0.25em 0 0 #e6f6ff; }
+  .lever .arm { position: absolute; left: 0.45em; bottom: 3.2em; width: 0.7em; height: 4.2em; background: #8a9aa8; transform-origin: 50% 100%; transition: height 0.18s steps(3); }
+  .lever .ball { position: absolute; left: -0.55em; top: -1.5em; width: 1.8em; height: 1.8em; border-radius: 50%; background: #e8324a; box-shadow: inset -0.3em -0.3em 0 #a81830, inset 0.25em 0.25em 0 #ff8a9a; }
+  .lever.pulled .arm { height: 0.8em; }
+
+  .tools { position: fixed; top: 0.6em; right: 0.6em; display: flex; gap: 0.5em; z-index: 6; }
+  .tools button { font: inherit; font-size: 12px; font-weight: 700; background: #00000055; color: #cbbfe8; border: 1px solid #ffffff33; padding: 5px 9px; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+<div class="tools">
+  <button id="mute">音效:開</button>
+  <button id="shop">換商號(測試用)</button>
+  <button id="reset">重置(測試用)</button>
+</div>
+
+<div class="stage">
+  <div class="marquee"><div class="title">星幣拉霸</div></div>
+  <div class="cabinet">
+    <div class="window"><div class="reels">
+      <canvas id="r0" width="256" height="368"></canvas>
+      <canvas id="r1" width="256" height="368"></canvas>
+      <canvas id="r2" width="256" height="368"></canvas>
+    </div></div>
+    <div class="row">
+      <div class="lamp g" id="lampL"></div>
+      <div class="counter" id="counter">抽獎 0/3</div>
+      <div class="lamp y" id="lampR"></div>
+    </div>
+    <div class="tray" id="tray"><span class="hint">中獎的獎品會掉在這裡</span></div>
+    <div class="msg" id="msg">拉下拉桿試試手氣</div>
+    <button class="btn" id="pull">拉!</button>
+  </div>
+  <div class="lever" id="lever"><div class="base"></div><div class="arm"><div class="ball"></div></div></div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   設定(全部是暫定值,等 Tai 拍板)
+   - MAX_DRAWS : 最多抽幾次
+   - SYMBOLS   : 三個一樣才中獎;prize = 星幣數量,weight = 中獎機率權重
+   - MISS_WEIGHT : 沒中的權重(全部權重加起來 = 100,所以 weight 就是 %)
+   之後接後端時,只要把 decideResult() 換成「問伺服器」即可,畫面不用改。
+   ===================================================================== */
+const MAX_DRAWS = 3;
+/* 兩家商號各自一版,不會同時出現。網址加 ?shop=haolilai 或 ?shop=benzun 決定是哪一家 */
+const SHOPS = {
+  haolilai: { name: "好利來",     title: "好利連連來", img: "assets/haolilai.png?v=2" },   // 圓的
+  benzun:   { name: "本尊吉客發", title: "大獎吉客發", img: "assets/benzun.png" }      // 方的
+};
+const SHOP_ID = (function () {
+  const q = new URLSearchParams(location.search).get("shop");
+  return SHOPS[q] ? q : "haolilai";
+})();
+const SHOP = SHOPS[SHOP_ID];
+const SYMBOLS = [
+  { id: "brand",  name: SHOP.name, prize: 1000, weight: 1 },   // 大獎 = 商號圖(取代 7)
+  { id: "star",   name: "星星", prize: 300,  weight: 3  },
+  { id: "coin",   name: "星幣", prize: 100,  weight: 6  },
+  { id: "gem",    name: "寶石", prize: 50,   weight: 8  },
+  { id: "cherry", name: "櫻桃", prize: 30,   weight: 10 },
+  { id: "bell",   name: "鈴鐺", prize: 20,   weight: 12 }
+];
+const MISS_WEIGHT = 60;
+
+function decideResult() {
+  const total = SYMBOLS.reduce((s, x) => s + x.weight, 0) + MISS_WEIGHT;
+  let r = Math.random() * total;
+  for (let i = 0; i < SYMBOLS.length; i++) {
+    r -= SYMBOLS[i].weight;
+    if (r < 0) return { symbols: [i, i, i], prize: SYMBOLS[i].prize, win: true };
+  }
+  const n = SYMBOLS.length;
+  let a = rnd(n), b = rnd(n), c = rnd(n);
+  if (Math.random() < 0.35) b = a;               // 差一點點的感覺
+  while (a === b && b === c) c = rnd(n);
+  return { symbols: [a, b, c], prize: 0, win: false };
+}
+function rnd(n) { return Math.floor(Math.random() * n); }
+
+/* ---------------- 像素圖(用數學式逐格畫,全部原創) ---------------- */
+const N = 24, C = 12;
+function dist(x, y, cx, cy) { return Math.hypot(x - cx, y - cy); }
+function segDist(x, y, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  let t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy);
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(x - (x1 + t * dx), y - (y1 + t * dy));
+}
+function starPoly(cx, cy, ro, ri) {
+  const p = [];
+  for (let k = 0; k < 10; k++) {
+    const a = (-90 + 36 * k) * Math.PI / 180, r = k % 2 ? ri : ro;
+    p.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+  }
+  return p;
+}
+function inPoly(x, y, p) {
+  let inside = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+    const xi = p[i][0], yi = p[i][1], xj = p[j][0], yj = p[j][1];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+const BIG_STAR = starPoly(C, 12.6, 10.6, 4.9);
+const SMALL_STAR = starPoly(C, 12.4, 5.2, 2.3);
+
+const PAINT = {
+  seven(x, y) {
+    let on = false;
+    if (y >= 4 && y < 9 && x >= 5 && x < 20) on = true;
+    if (y >= 9 && y < 21) { const cx = 17 - (y - 9) * 0.72; if (Math.abs(x - cx) < 2.6) on = true; }
+    if (!on) return null;
+    return y < 6 ? "#ff9a8a" : "#e8324a";
+  },
+  star(x, y) {
+    if (!inPoly(x, y, BIG_STAR)) return null;
+    if ((Math.abs(x - 9.5) < 0.6 || Math.abs(x - 14.5) < 0.6) && y > 10 && y < 13) return "#3a2208";
+    return y > 15 ? "#f2a516" : (y < 8 ? "#fff3a0" : "#ffd83d");
+  },
+  coin(x, y) {
+    const d = dist(x, y, C, C);
+    if (d > 10.2) return null;
+    if (inPoly(x, y, SMALL_STAR)) return "#fff6b8";
+    if (d > 7.2 && d < 8.4) return "#c98a12";
+    if (d > 8.4 && x + y < 19) return "#fff3a0";
+    if (d > 8.4 && x + y > 29) return "#d99a1a";
+    return "#f7c531";
+  },
+  gem(x, y) {
+    const ax = Math.abs(x - C);
+    let on = false;
+    if (y >= 4 && y < 10) on = ax <= 5 + (y - 4);
+    else if (y >= 10 && y < 22) on = ax <= 10.4 - (y - 10) * 0.9;
+    if (!on) return null;
+    if (y < 10) return x < 9 ? "#d6faff" : (x > 15 ? "#49b6ea" : "#a8f0ff");
+    return x < 9 ? "#7fe3ff" : (x > 15 ? "#1f8fd0" : "#4fc8f8");
+  },
+  cherry(x, y) {
+    const d1 = dist(x, y, 7.5, 16.5), d2 = dist(x, y, 16.5, 17.5);
+    if (d1 < 5.2) return dist(x, y, 5.6, 14.6) < 1.3 ? "#ffb0ba" : (d1 > 3.8 && x + y > 26 ? "#b81e36" : "#e8324a");
+    if (d2 < 5.2) return dist(x, y, 14.6, 15.6) < 1.3 ? "#ffb0ba" : (d2 > 3.8 && x + y > 36 ? "#b81e36" : "#e8324a");
+    const lx = (x - 17) / 4.2, ly = (y - 4.5) / 2.2;
+    if (lx * lx + ly * ly < 1) return y < 4.5 ? "#5ad07a" : "#2fa84f";
+    if (segDist(x, y, 7.5, 12, 13, 3.5) < 0.8 || segDist(x, y, 16.5, 13, 13, 3.5) < 0.8) return "#7a4a1a";
+    return null;
+  },
+  bell(x, y) {
+    const ax = Math.abs(x - C);
+    if (dist(x, y, C, 3.6) < 1.9) return "#ffcf5a";
+    if (dist(x, y, C, 21) < 2.2) return "#c9741a";
+    let hw = -1;
+    if (y >= 5 && y < 17) hw = Math.min(8, 3 + (y - 5) * 0.62);
+    else if (y >= 17 && y < 20) hw = 10.2;
+    if (ax > hw) return null;
+    if (y >= 17) return "#e8962a";
+    if (x - C < -hw + 3 && x - C > -hw + 1) return "#fff0b0";
+    if (x - C > hw - 2) return "#e8962a";
+    return "#ffb52e";
+  }
+};
+
+function makeSprite(fn) {
+  const g = [];
+  for (let y = 0; y < N; y++) { g.push([]); for (let x = 0; x < N; x++) g[y].push(fn(x + 0.5, y + 0.5)); }
+  const cv = document.createElement("canvas"); cv.width = N; cv.height = N;
+  const c = cv.getContext("2d");
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let col = g[y][x];
+    if (!col) {
+      const nb = (y > 0 && g[y - 1][x]) || (y < N - 1 && g[y + 1][x]) || (x > 0 && g[y][x - 1]) || (x < N - 1 && g[y][x + 1]);
+      if (nb) col = "#2a1030";
+    }
+    if (col) { c.fillStyle = col; c.fillRect(x, y, 1, 1); }
+  }
+  return cv;
+}
+const SPRITES = SYMBOLS.map(s => {
+  if (s.id !== "brand") return makeSprite(PAINT[s.id]);
+  const img = new Image();
+  const sp = { photo: true, img: img };
+  img.onload = () => reels.forEach(drawReel);
+  img.onerror = () => { SPRITES[0] = makeSprite(PAINT.seven); reels.forEach(drawReel); };  // 圖載不到就退回 7
+  img.src = SHOP.img;
+  return sp;
+});
+/* 畫一個圖案:u = 一格像素圖要放大幾倍;商號圖比像素圖大一圈(28 格) */
+function drawSym(c, idx, x, y, u) {
+  const sp = SPRITES[idx];
+  if (sp.photo) {
+    if (!sp.img.complete || !sp.img.naturalWidth) return;
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = "high";
+    c.drawImage(sp.img, x - 2 * u, y - 2 * u, 28 * u, 28 * u);
+  } else {
+    c.imageSmoothingEnabled = false;
+    c.drawImage(sp, x, y, N * u, N * u);
+  }
+}
+
+/* ---------------- 轉輪 ---------------- */
+const U = 8, CELL = 30 * U, TOP = 11 * U, W = 32 * U, H = 46 * U;
+function makeStrip() {
+  const a = [];
+  for (let k = 0; k < 2; k++) for (let i = 0; i < SYMBOLS.length; i++) a.push(i);
+  for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); const t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
+const reels = [0, 1, 2].map(i => ({
+  ctx: document.getElementById("r" + i).getContext("2d"),
+  strip: makeStrip(), pos: rnd(12), anim: null
+}));
+function mod(a, n) { return ((a % n) + n) % n; }
+
+function drawReel(r) {
+  const c = r.ctx, L = r.strip.length;
+  c.fillStyle = "#f4f1e4"; c.fillRect(0, 0, W, H);
+  const base = Math.floor(r.pos);
+  for (let i = base - 1; i <= base + 2; i++) {
+    const y = Math.round((TOP + (r.pos - i) * CELL) / U) * U;
+    drawSym(c, r.strip[mod(i, L)], 4 * U, y, U);
+  }
+  c.fillStyle = "rgba(40,30,70,0.28)"; c.fillRect(0, 0, W, 3 * U); c.fillRect(0, H - 3 * U, W, 3 * U);
+  c.fillStyle = "rgba(40,30,70,0.14)"; c.fillRect(0, 3 * U, W, 3 * U); c.fillRect(0, H - 6 * U, W, 3 * U);
+}
+function easeOutBack(t) { const k = 0.9, u = t - 1; return 1 + (k + 1) * u * u * u + k * u * u; }
+
+/* ---------------- 音效(WebAudio 自己合成,沒有外部檔) ---------------- */
+let actx = null, muted = false;
+function audio() {
+  if (!actx) { const A = window.AudioContext || window.webkitAudioContext; if (A) actx = new A(); }
+  if (actx && actx.state === "suspended") actx.resume();
+  return actx;
+}
+function beep(freq, dur, type, vol, delay) {
+  if (muted) return; const a = audio(); if (!a) return;
+  const t = a.currentTime + (delay || 0), o = a.createOscillator(), g = a.createGain();
+  o.type = type || "square"; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(vol || 0.08, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+const sfx = {
+  pull() { beep(180, 0.12, "square", 0.1); beep(120, 0.18, "square", 0.1, 0.08); },
+  stop() { beep(320, 0.07, "square", 0.09); },
+  miss() { beep(220, 0.15, "triangle", 0.1); beep(165, 0.3, "triangle", 0.1, 0.15); },
+  win(big) {
+    const notes = big ? [523, 659, 784, 1047, 784, 1047, 1319] : [523, 659, 784, 1047];
+    notes.forEach((f, i) => beep(f, 0.16, "square", 0.09, i * 0.11));
+  }
+};
+
+/* ---------------- 彩帶 ---------------- */
+const fx = document.getElementById("fx"), fctx = fx.getContext("2d");
+let parts = [];
+function fitFx() { fx.width = innerWidth; fx.height = innerHeight; }
+addEventListener("resize", fitFx); fitFx();
+function confetti(n) {
+  const cols = ["#ffd83d", "#ff6a5a", "#4fd6ff", "#35d07a", "#ffffff", "#c58aff"];
+  for (let i = 0; i < n; i++) parts.push({
+    x: innerWidth / 2 + (Math.random() - 0.5) * innerWidth * 0.5, y: innerHeight * 0.35,
+    vx: (Math.random() - 0.5) * 9, vy: -Math.random() * 9 - 3,
+    s: 4 + rnd(3) * 2, c: cols[rnd(cols.length)], life: 110 + rnd(50)
+  });
+}
+
+/* ---------------- 遊戲流程 ---------------- */
+const el = id => document.getElementById(id);
+const state = { used: 0, total: 0, spinning: false };
+
+function setMsg(t, win) { const m = el("msg"); m.className = "msg" + (win ? " win" : ""); m.textContent = t; void m.offsetWidth; }
+function refresh() {
+  el("counter").textContent = "抽獎 " + state.used + "/" + MAX_DRAWS;
+  el("pull").disabled = state.spinning || state.used >= MAX_DRAWS;
+  el("pull").textContent = state.used >= MAX_DRAWS && !state.spinning ? "抽完了" : "拉!";
+}
+function lamps(on) { el("lampL").classList.toggle("on", on); el("lampR").classList.toggle("on", on); }
+
+function pull() {
+  if (state.spinning || state.used >= MAX_DRAWS) return;
+  audio(); sfx.pull();
+  state.spinning = true; state.used++;
+  const res = decideResult();
+  refresh(); lamps(true); setMsg("轉動中…");
+  const lv = el("lever"); lv.classList.add("pulled"); setTimeout(() => lv.classList.remove("pulled"), 260);
+
+  const now = performance.now();
+  reels.forEach((r, i) => {
+    const L = r.strip.length, start = r.pos;
+    const base = Math.ceil(start) + L * (2 + i);
+    let j = 0; while (r.strip[mod(base + j, L)] !== res.symbols[i]) j++;
+    r.anim = { start: start, target: base + j, t0: now, dur: 1300 + i * 550, done: false };
+  });
+  state.result = res;
+  requestAnimationFrame(tick);
+  /* 保險:畫面被蓋住時瀏覽器會停掉動畫,時間到就直接停在結果,不會卡在「轉動中」 */
+  setTimeout(() => { if (state.spinning) tick(performance.now()); }, 1300 + 2 * 550 + 400);
+}
+
+function finish() {
+  const res = state.result;
+  state.spinning = false; lamps(false);
+  const tray = el("tray"); const hint = tray.querySelector(".hint"); if (hint) hint.remove();
+  const item = document.createElement("div"); item.className = "slotitem" + (res.win ? "" : " miss");
+  const ic = document.createElement("canvas"); ic.width = 112; ic.height = 112;
+  drawSym(ic.getContext("2d"), res.symbols[0], 8, 8, 4);
+  const tx = document.createElement("span"); tx.textContent = res.win ? "+" + res.prize : "沒中";
+  item.appendChild(ic); item.appendChild(tx); tray.appendChild(item);
+
+  if (res.win) {
+    state.total += res.prize;
+    setMsg((res.symbols[0] === 0 ? "大獎!" : "中獎!") + "星幣 +" + res.prize, true);
+    sfx.win(res.prize >= 300); confetti(res.prize >= 300 ? 120 : 50);
+  } else { setMsg(state.used >= MAX_DRAWS ? "可惜沒中" : "差一點,再來!"); sfx.miss(); }
+
+  if (state.used >= MAX_DRAWS) {
+    setTimeout(() => setMsg(state.total > 0 ? "抽完了,共獲得星幣 " + state.total : "抽完了,下次再來", state.total > 0), 1400);
+  }
+  refresh();
+}
+
+function tick(now) {
+  let busy = false;
+  reels.forEach(r => {
+    const a = r.anim;
+    if (a && !a.done) {
+      const t = Math.min(1, (now - a.t0) / a.dur);
+      r.pos = a.start + (a.target - a.start) * easeOutBack(t);
+      if (t >= 1) { r.pos = a.target; a.done = true; sfx.stop(); } else busy = true;
+      drawReel(r);
+    }
+  });
+  if (parts.length) {
+    fctx.clearRect(0, 0, fx.width, fx.height);
+    parts.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.28; p.life--; fctx.fillStyle = p.c; fctx.fillRect(Math.round(p.x), Math.round(p.y), p.s, p.s); });
+    parts = parts.filter(p => p.life > 0 && p.y < innerHeight + 20);
+    if (!parts.length) fctx.clearRect(0, 0, fx.width, fx.height);
+  }
+  if (state.spinning && !busy) finish();
+  if (busy || parts.length) requestAnimationFrame(tick);
+}
+
+function reset() {
+  if (state.spinning) return;
+  state.used = 0; state.total = 0;
+  el("tray").innerHTML = '<span class="hint">中獎的獎品會掉在這裡</span>';
+  setMsg("拉下拉桿試試手氣"); refresh();
+}
+
+el("pull").addEventListener("click", pull);
+el("lever").addEventListener("click", pull);
+el("reset").addEventListener("click", reset);
+el("shop").addEventListener("click", () => { location.search = "?shop=" + (SHOP_ID === "haolilai" ? "benzun" : "haolilai"); });
+el("mute").addEventListener("click", () => { muted = !muted; el("mute").textContent = "音效:" + (muted ? "關" : "開"); });
+addEventListener("keydown", e => { if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); pull(); } });
+
+document.querySelector(".marquee .title").textContent = SHOP.title; document.title = SHOP.title;
+reels.forEach(drawReel); refresh();
+/* 測試用:讓自動化檢查讀得到狀態 */
+window.__slot = { state: state, reels: reels, SYMBOLS: SYMBOLS, SPRITES: SPRITES, SHOP_ID: SHOP_ID, decideResult: decideResult, drawReel: drawReel };
+</script>
+</body>
+</html>
