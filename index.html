@@ -626,7 +626,16 @@ el("mute").addEventListener("click", () => { muted = !muted; el("mute").textCont
 addEventListener("keydown", e => { if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); pull(); } });
 
 document.querySelector(".marquee .title").textContent = SHOP.title; document.title = SHOP.title;
+/* 圖卡用的展示模式(網址加 &card=1):藏掉測試按鈕、三個轉輪都停在商號圖,拿來截圖當 LINE 圖卡的主圖 */
+const CARD_MODE = new URLSearchParams(location.search).get("card") === "1";
 reels.forEach(drawReel); refresh();
+if (CARD_MODE) {
+  document.querySelector(".tools").style.display = "none";
+  el("audition").style.display = "none";
+  reels.forEach(r => { r.pos = r.strip.indexOf(0); drawReel(r); });
+  el("counter").textContent = "免費抽獎";
+  el("msg").textContent = "三個連線中大獎";
+}
 /* 測試用:讓自動化檢查讀得到狀態 */
 window.__slot = { state: state, reels: reels, SYMBOLS: SYMBOLS, SPRITES: SPRITES, SHOP_ID: SHOP_ID, decideResult: decideResult, drawReel: drawReel };
 </script>
