@@ -129,7 +129,9 @@
   @keyframes showTxt { from { transform: scale(0); } to { transform: scale(1); } }
 
   .tools { position: fixed; top: 0.6em; right: 0.6em; display: flex; gap: 0.5em; z-index: 6; }
-  .tools button { font: inherit; font-size: 12px; font-weight: 700; background: #00000055; color: #cbbfe8; border: 1px solid #ffffff33; padding: 5px 9px; cursor: pointer; }
+  .audition { position: fixed; left: 0; right: 0; bottom: 8px; z-index: 6; display: flex; gap: 6px; justify-content: center; align-items: center;
+              font-size: 12px; font-weight: 700; color: #cbbfe8; }
+  .audition button, .tools button {font: inherit; font-size: 12px; font-weight: 700; background: #00000055; color: #cbbfe8; border: 1px solid #ffffff33; padding: 5px 9px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -143,6 +145,14 @@
   <button id="mute">音效:開</button>
   <button id="shop">換商號(測試用)</button>
   <button id="reset">重置(測試用)</button>
+</div>
+
+<div class="audition" id="audition">
+  <span>試聽</span>
+  <button data-s="small">小獎</button>
+  <button data-s="big">中獎</button>
+  <button data-s="A">大獎A 喜慶</button>
+  <button data-s="B">大獎B 電玩</button>
 </div>
 
 <div class="stage">
@@ -406,7 +416,7 @@ const sfx = {
     beep(90, 0.3, "sine", 0.6, 0, 45);
     sfx.coins(0.2, big ? 1.6 : 1.0, big ? 26 : 14); buzz(big ? [60, 40, 60] : 60);
   },
-  jackpot() {
+  jackpotB() {
     [0, 0.45, 0.9, 1.35].forEach(t => beep(85, 0.4, "sine", 0.7, t, 40));               // 大鼓
     beep(180, 0.7, "sawtooth", 0.14, 0, 1800);                                           // 衝上去
     const mel = [[523, 0], [523, 0.15], [523, 0.3], [659, 0.45], [784, 0.75], [659, 0.9], [784, 1.05], [1047, 1.35]];
@@ -416,6 +426,54 @@ const sfx = {
     sfx.coins(0.3, 3.2, 70);                                                             // 金幣雨
     buzz([120, 60, 120, 60, 300]);
   }
+};
+
+/* ---------------- 喜慶版:鑼鼓 + 五聲音階旋律(自己編的,沒有用現成曲子) ---------------- */
+let noiseBuf = null;
+function noise(dur, vol, delay, hp) {
+  if (muted) return; const a = audio(); if (!a) return;
+  if (!noiseBuf) {
+    noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const t = a.currentTime + (delay || 0), s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  s.buffer = noiseBuf; s.loop = true; f.type = "highpass"; f.frequency.value = hp || 5000;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t + dur + 0.02);
+}
+const perc = {
+  dong(t) { beep(150, 0.2, "sine", 0.8, t, 55); noise(0.05, 0.15, t, 800); },                                 // 咚
+  qiang(t) { noise(0.35, 0.3, t, 4500); [2093, 2637, 3136].forEach(f => beep(f, 0.3, "square", 0.04, t)); }, // 鏘
+  gong(t) { [196, 290, 396, 535].forEach((f, i) => beep(f, 1.8, "sine", 0.35 / (i + 1), t, f * 0.97)); noise(0.8, 0.2, t, 2500); }  // 大鑼
+};
+function tone(f, len, t, vol) {
+  beep(f, len, "square", vol, t); beep(f * 1.005, len, "square", vol * 0.5, t); beep(f / 2, len * 1.1, "triangle", vol * 1.3, t);
+}
+/* 旋律寫法:[頻率, 第幾拍開始, 幾拍長] */
+function playTune(mel, beat, vol) { mel.forEach(m => tone(m[0], m[2] * beat + 0.08, m[1] * beat, vol)); }
+
+sfx.win = function (big) {
+  const b = 0.11;
+  const mel = big
+    ? [[659, 0, 1], [784, 1, 1], [880, 2, 1], [1047, 3, 1], [880, 4, 1], [1047, 5, 1], [1175, 6, 1], [1319, 7, 5]]
+    : [[659, 0, 1], [784, 1, 1], [880, 2, 1], [1047, 3, 1], [880, 4, 1], [1047, 5, 4]];
+  playTune(mel, b, 0.18);
+  perc.dong(0); perc.dong(2 * b); perc.dong(4 * b); perc.qiang(mel[mel.length - 1][1] * b);
+  sfx.coins(0.2, big ? 1.6 : 1.0, big ? 26 : 14); buzz(big ? [60, 40, 60] : 60);
+};
+sfx.jackpot = function () {
+  const b = 0.13;
+  playTune([
+    [784, 0, 1], [784, 1, 1], [880, 2, 1], [784, 3, 1], [659, 4, 1], [784, 5, 1], [1047, 6, 2],
+    [880, 8, 1], [1047, 9, 1], [880, 10, 1], [784, 11, 1], [659, 12, 1], [784, 13, 1], [587, 14, 2],
+    [523, 16, 1], [587, 17, 1], [659, 18, 1], [784, 19, 1], [880, 20, 1], [1047, 21, 1], [1175, 22, 1], [1319, 23, 1]
+  ], b, 0.17);
+  [1047, 1319, 1568].forEach(f => tone(f, 1.6, 24 * b, 0.12));                  // 收尾大和弦
+  for (let k = 0; k < 24; k += 4) { perc.dong(k * b); perc.dong((k + 1) * b); perc.qiang((k + 2) * b); }   // 咚咚鏘
+  perc.gong(24 * b); perc.dong(24 * b);
+  sfx.coins(0.3, 4.2, 80);
+  buzz([120, 60, 120, 60, 300]);
 };
 
 /* ---------------- 彩帶 ---------------- */
@@ -544,6 +602,13 @@ el("pull").addEventListener("click", pull);
 el("lever").addEventListener("click", pull);
 el("reset").addEventListener("click", reset);
 el("show").addEventListener("click", hideJackpot);
+/* 試聽按鈕:只有測試機才有 */
+if (!TEST_MODE) el("audition").style.display = "none";
+el("audition").addEventListener("click", e => {
+  const s = e.target.dataset.s; if (!s) return;
+  audio();
+  if (s === "small") sfx.win(false); else if (s === "big") sfx.win(true); else if (s === "A") sfx.jackpot(); else sfx.jackpotB();
+});
 el("shop").addEventListener("click", () => { location.search = "?shop=" + (SHOP_ID === "haolilai" ? "benzun" : "haolilai"); });
 el("mute").addEventListener("click", () => { muted = !muted; el("mute").textContent = "音效:" + (muted ? "關" : "開"); });
 addEventListener("keydown", e => { if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); pull(); } });
