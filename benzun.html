@@ -16,6 +16,8 @@
 </head>
 <body>
 <!-- 入口頁:只負責連結預覽的標題和圖,遊戲本體在 index.html -->
-<iframe src="./?shop=benzun" title="大獎吉客發" allow="autoplay"></iframe>
+<!-- 網址後面加時間,瀏覽器才不會拿舊的遊戲檔出來用 -->
+<iframe id="g" title="大獎吉客發" allow="autoplay"></iframe>
+<script>document.getElementById("g").src = "./?shop=benzun&t=" + Date.now();</script>
 </body>
 </html>

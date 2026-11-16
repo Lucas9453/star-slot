@@ -16,6 +16,8 @@
 </head>
 <body>
 <!-- 入口頁:只負責連結預覽的標題和圖,遊戲本體在 index.html -->
-<iframe src="./?shop=haolilai" title="好利連連來" allow="autoplay"></iframe>
+<!-- 網址後面加時間,瀏覽器才不會拿舊的遊戲檔出來用 -->
+<iframe id="g" title="好利連連來" allow="autoplay"></iframe>
+<script>document.getElementById("g").src = "./?shop=haolilai&t=" + Date.now();</script>
 </body>
 </html>
