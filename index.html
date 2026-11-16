@@ -148,7 +148,8 @@
 </div>
 
 <div class="audition" id="audition">
-  <span>試聽</span>
+  <span>v6 試聽</span>
+  <button data-s="miss">沒中</button>
   <button data-s="small">小獎</button>
   <button data-s="big">中獎</button>
   <button data-s="A">大獎A 喜慶</button>
@@ -342,7 +343,7 @@ function drawSym(c, idx, x, y, u) {
   if (sp.photo) {
     if (!sp.img.complete || !sp.img.naturalWidth) return;
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = "high";
-    c.drawImage(sp.img, x - 2 * u, y - 2 * u, 28 * u, 28 * u);
+    c.drawImage(sp.img, x - 3.5 * u, y - 3.5 * u, 31 * u, 31 * u);   // 商號圖幾乎占滿整格(一格寬 32)
   } else {
     c.imageSmoothingEnabled = false;
     c.drawImage(sp, x, y, N * u, N * u);
@@ -402,11 +403,11 @@ function beep(freq, dur, type, vol, delay, freq2) {
 }
 function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
 const sfx = {
-  pull() { beep(240, 0.1, "square", 0.3, 0, 90); beep(95, 0.22, "sawtooth", 0.3, 0.08, 55); },
+  pull() { noise(0.06, 0.25, 0, 1500); beep(260, 0.07, "square", 0.18, 0, 130); beep(130, 0.16, "sine", 0.55, 0.05, 65); },   // 喀 + 咚,不用鋸齒波(聽起來像屁聲)
   spin(sec) { for (let t = 0.1; t < sec; t += 0.075) beep(650 + Math.random() * 250, 0.03, "square", 0.07, t); },
-  tease(start, len) { beep(280, len, "sawtooth", 0.12, start, 1100); },       // 前兩個一樣時的拉高音
+  tease(start, len) { beep(280, len, "triangle", 0.3, start, 1100); },       // 前兩個一樣時的拉高音
   stop() { beep(170, 0.14, "triangle", 0.6, 0, 75); beep(1300, 0.03, "square", 0.14); buzz(15); },
-  miss() { beep(300, 0.18, "sawtooth", 0.2, 0, 200); beep(200, 0.4, "sawtooth", 0.2, 0.16, 100); },
+  miss() { beep(660, 0.14, "sine", 0.28); beep(494, 0.3, "sine", 0.28, 0.14); },   // 輕輕的「叮~咚」,乾淨的正弦波
   coins(start, sec, n) { for (let i = 0; i < n; i++) beep(1700 + Math.random() * 1700, 0.09, "sine", 0.14, start + Math.random() * sec); },
   win(big) {
     const notes = big ? [523, 659, 784, 1047, 784, 1047, 1319, 1568] : [523, 659, 784, 1047, 1319];
@@ -547,7 +548,8 @@ function finish() {
   const item = document.createElement("div"); item.className = "slotitem" + (res.win ? "" : " miss");
   const ic = document.createElement("canvas"); ic.width = 112; ic.height = 112;
   const icx = ic.getContext("2d");
-  if (res.win) drawSym(icx, res.symbols[0], 8, 8, 4);
+  if (res.win && SPRITES[res.symbols[0]].photo) icx.drawImage(SPRITES[0].img, 0, 0, 112, 112);
+  else if (res.win) drawSym(icx, res.symbols[0], 8, 8, 4);
   else { icx.imageSmoothingEnabled = false; icx.drawImage(MISS_SPRITE, 8, 8, 96, 96); }
   const tx = document.createElement("span"); tx.textContent = res.win ? "+" + res.prize : "沒中";
   item.appendChild(ic); item.appendChild(tx); tray.appendChild(item);
@@ -607,7 +609,7 @@ if (!TEST_MODE) el("audition").style.display = "none";
 el("audition").addEventListener("click", e => {
   const s = e.target.dataset.s; if (!s) return;
   audio();
-  if (s === "small") sfx.win(false); else if (s === "big") sfx.win(true); else if (s === "A") sfx.jackpot(); else sfx.jackpotB();
+  if (s === "miss") sfx.miss(); else if (s === "small") sfx.win(false); else if (s === "big") sfx.win(true); else if (s === "A") sfx.jackpot(); else sfx.jackpotB();
 });
 el("shop").addEventListener("click", () => { location.search = "?shop=" + (SHOP_ID === "haolilai" ? "benzun" : "haolilai"); });
 el("mute").addEventListener("click", () => { muted = !muted; el("mute").textContent = "音效:" + (muted ? "關" : "開"); });
