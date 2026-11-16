@@ -109,12 +109,36 @@
   .lever .ball { position: absolute; left: -0.55em; top: -1.5em; width: 1.8em; height: 1.8em; border-radius: 50%; background: #e8324a; box-shadow: inset -0.3em -0.3em 0 #a81830, inset 0.25em 0.25em 0 #ff8a9a; }
   .lever.pulled .arm { height: 0.8em; }
 
+  /* 大獎表演 */
+  #show { position: fixed; inset: 0; z-index: 4; display: none; flex-direction: column; align-items: center; justify-content: center;
+          background: rgba(20, 5, 30, 0.84); overflow: hidden; cursor: pointer; }
+  #show.on { display: flex; }
+  #show .rays { position: absolute; left: 50%; top: 50%; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax;
+          background: repeating-conic-gradient(rgba(255, 216, 61, 0.38) 0 10deg, transparent 10deg 20deg);
+          animation: raySpin 9s linear infinite; }
+  #showimg { position: relative; width: min(66vw, 300px); height: min(66vw, 300px); object-fit: cover;
+          border: 6px solid #f7c531; box-shadow: 0 0 0 4px #7a3b00, 0 0 45px 12px rgba(255, 216, 61, 0.75);
+          animation: showIn 0.9s cubic-bezier(0.2, 1.5, 0.4, 1) both, showPulse 0.45s 0.9s ease-in-out infinite alternate; }
+  #showimg.round { border-radius: 50%; }
+  #show .showtxt { position: relative; margin-top: 24px; text-align: center; color: #ffd83d; font-size: 40px; letter-spacing: 0.1em;
+          text-shadow: 3px 3px 0 #7a3b00; animation: showTxt 0.5s 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+  #show .showtxt span { display: block; font-size: 28px; color: #fff; margin-top: 4px; }
+  @keyframes raySpin { to { transform: rotate(360deg); } }
+  @keyframes showIn { from { transform: scale(0) rotate(-220deg); } to { transform: scale(1) rotate(0); } }
+  @keyframes showPulse { from { transform: scale(1) rotate(-4deg); } to { transform: scale(1.1) rotate(4deg); } }
+  @keyframes showTxt { from { transform: scale(0); } to { transform: scale(1); } }
+
   .tools { position: fixed; top: 0.6em; right: 0.6em; display: flex; gap: 0.5em; z-index: 6; }
   .tools button { font: inherit; font-size: 12px; font-weight: 700; background: #00000055; color: #cbbfe8; border: 1px solid #ffffff33; padding: 5px 9px; cursor: pointer; }
 </style>
 </head>
 <body>
 <canvas id="fx"></canvas>
+<div id="show">
+  <div class="rays"></div>
+  <img id="showimg" alt="">
+  <div class="showtxt"><b>大獎!</b><span id="showprize"></span></div>
+</div>
 <div class="tools">
   <button id="mute">音效:開</button>
   <button id="shop">換商號(測試用)</button>
@@ -151,10 +175,13 @@
    之後接後端時,只要把 decideResult() 換成「問伺服器」即可,畫面不用改。
    ===================================================================== */
 const MAX_DRAWS = 3;
+/* 測試機:大獎三次出一次、不限次數。正式上線前改成 false */
+const TEST_MODE = true;
+const LIMIT = TEST_MODE ? Infinity : MAX_DRAWS;
 /* 兩家商號各自一版,不會同時出現。網址加 ?shop=haolilai 或 ?shop=benzun 決定是哪一家 */
 const SHOPS = {
-  haolilai: { name: "好利來",     title: "好利連連來", img: "assets/haolilai.png?v=2" },   // 圓的
-  benzun:   { name: "本尊吉客發", title: "大獎吉客發", img: "assets/benzun.png" }      // 方的
+  haolilai: { name: "好利來",     title: "好利連連來", img: "assets/haolilai.png?v=2", big: "assets/og_haolilai.jpg", round: true },   // 圓的
+  benzun:   { name: "本尊吉客發", title: "大獎吉客發", img: "assets/benzun.png",       big: "assets/og_benzun.jpg",   round: false }   // 方的
 };
 const SHOP_ID = (function () {
   const q = new URLSearchParams(location.search).get("shop");
@@ -172,6 +199,7 @@ const SYMBOLS = [
 const MISS_WEIGHT = 60;
 
 function decideResult() {
+  if (TEST_MODE && Math.random() < 1 / 3) return { symbols: [0, 0, 0], prize: SYMBOLS[0].prize, win: true };
   const total = SYMBOLS.reduce((s, x) => s + x.weight, 0) + MISS_WEIGHT;
   let r = Math.random() * total;
   for (let i = 0; i < SYMBOLS.length; i++) {
@@ -339,26 +367,54 @@ function drawReel(r) {
 function easeOutBack(t) { const k = 0.9, u = t - 1; return 1 + (k + 1) * u * u * u + k * u * u; }
 
 /* ---------------- 音效(WebAudio 自己合成,沒有外部檔) ---------------- */
-let actx = null, muted = false;
+let actx = null, master = null, muted = false;
 function audio() {
-  if (!actx) { const A = window.AudioContext || window.webkitAudioContext; if (A) actx = new A(); }
+  if (!actx) {
+    const A = window.AudioContext || window.webkitAudioContext;
+    if (A) {
+      actx = new A();
+      const comp = actx.createDynamicsCompressor();     // 壓住爆音,整體才能開大聲
+      master = actx.createGain(); master.gain.value = 0.9;
+      master.connect(comp); comp.connect(actx.destination);
+    }
+  }
   if (actx && actx.state === "suspended") actx.resume();
   return actx;
 }
-function beep(freq, dur, type, vol, delay) {
+/* freq2 有給就從 freq 滑到 freq2 */
+function beep(freq, dur, type, vol, delay, freq2) {
   if (muted) return; const a = audio(); if (!a) return;
   const t = a.currentTime + (delay || 0), o = a.createOscillator(), g = a.createGain();
   o.type = type || "square"; o.frequency.setValueAtTime(freq, t);
-  g.gain.setValueAtTime(vol || 0.08, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+  if (freq2) o.frequency.exponentialRampToValueAtTime(freq2, t + dur);
+  g.gain.setValueAtTime(vol || 0.1, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02);
 }
+function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
 const sfx = {
-  pull() { beep(180, 0.12, "square", 0.1); beep(120, 0.18, "square", 0.1, 0.08); },
-  stop() { beep(320, 0.07, "square", 0.09); },
-  miss() { beep(220, 0.15, "triangle", 0.1); beep(165, 0.3, "triangle", 0.1, 0.15); },
+  pull() { beep(240, 0.1, "square", 0.3, 0, 90); beep(95, 0.22, "sawtooth", 0.3, 0.08, 55); },
+  spin(sec) { for (let t = 0.1; t < sec; t += 0.075) beep(650 + Math.random() * 250, 0.03, "square", 0.07, t); },
+  tease(start, len) { beep(280, len, "sawtooth", 0.12, start, 1100); },       // 前兩個一樣時的拉高音
+  stop() { beep(170, 0.14, "triangle", 0.6, 0, 75); beep(1300, 0.03, "square", 0.14); buzz(15); },
+  miss() { beep(300, 0.18, "sawtooth", 0.2, 0, 200); beep(200, 0.4, "sawtooth", 0.2, 0.16, 100); },
+  coins(start, sec, n) { for (let i = 0; i < n; i++) beep(1700 + Math.random() * 1700, 0.09, "sine", 0.14, start + Math.random() * sec); },
   win(big) {
-    const notes = big ? [523, 659, 784, 1047, 784, 1047, 1319] : [523, 659, 784, 1047];
-    notes.forEach((f, i) => beep(f, 0.16, "square", 0.09, i * 0.11));
+    const notes = big ? [523, 659, 784, 1047, 784, 1047, 1319, 1568] : [523, 659, 784, 1047, 1319];
+    notes.forEach((f, i) => { beep(f, 0.2, "square", 0.2, i * 0.1); beep(f / 2, 0.22, "triangle", 0.28, i * 0.1); });
+    const end = notes.length * 0.1;
+    [1047, 1319, 1568].forEach(f => beep(f, 0.6, "square", 0.13, end));
+    beep(90, 0.3, "sine", 0.6, 0, 45);
+    sfx.coins(0.2, big ? 1.6 : 1.0, big ? 26 : 14); buzz(big ? [60, 40, 60] : 60);
+  },
+  jackpot() {
+    [0, 0.45, 0.9, 1.35].forEach(t => beep(85, 0.4, "sine", 0.7, t, 40));               // 大鼓
+    beep(180, 0.7, "sawtooth", 0.14, 0, 1800);                                           // 衝上去
+    const mel = [[523, 0], [523, 0.15], [523, 0.3], [659, 0.45], [784, 0.75], [659, 0.9], [784, 1.05], [1047, 1.35]];
+    mel.forEach(m => { beep(m[0], 0.22, "square", 0.22, m[1]); beep(m[0] / 2, 0.25, "triangle", 0.3, m[1]); beep(m[0] * 1.5, 0.2, "square", 0.08, m[1]); });
+    [1047, 1319, 1568, 2093].forEach(f => beep(f, 1.3, "square", 0.13, 1.35));           // 收尾大和弦
+    [523, 659, 784].forEach(f => beep(f, 1.3, "triangle", 0.2, 1.35));
+    sfx.coins(0.3, 3.2, 70);                                                             // 金幣雨
+    buzz([120, 60, 120, 60, 300]);
   }
 };
 
@@ -382,31 +438,48 @@ const state = { used: 0, total: 0, spinning: false };
 
 function setMsg(t, win) { const m = el("msg"); m.className = "msg" + (win ? " win" : ""); m.textContent = t; void m.offsetWidth; }
 function refresh() {
-  el("counter").textContent = "抽獎 " + state.used + "/" + MAX_DRAWS;
-  el("pull").disabled = state.spinning || state.used >= MAX_DRAWS;
-  el("pull").textContent = state.used >= MAX_DRAWS && !state.spinning ? "抽完了" : "拉!";
+  el("counter").textContent = TEST_MODE ? "測試機 第 " + state.used + " 抽" : "抽獎 " + state.used + "/" + MAX_DRAWS;
+  el("pull").disabled = state.spinning || state.used >= LIMIT;
+  el("pull").textContent = state.used >= LIMIT && !state.spinning ? "抽完了" : "拉!";
 }
+
+/* 大獎表演:商號圖跳出來轉一圈、後面放光芒,點一下或 4.5 秒後收起來 */
+let showTimer = 0;
+function showJackpot(prize) {
+  const box = el("show"), img = el("showimg");
+  img.className = SHOP.round ? "round" : "";
+  if (!img.getAttribute("src")) img.src = SHOP.big;
+  el("showprize").textContent = "星幣 +" + prize;
+  box.classList.remove("on"); void box.offsetWidth; box.classList.add("on");
+  clearTimeout(showTimer); showTimer = setTimeout(hideJackpot, 4500);
+}
+function hideJackpot() { clearTimeout(showTimer); el("show").classList.remove("on"); }
 function lamps(on) { el("lampL").classList.toggle("on", on); el("lampR").classList.toggle("on", on); }
 
 function pull() {
-  if (state.spinning || state.used >= MAX_DRAWS) return;
-  audio(); sfx.pull();
+  if (state.spinning || state.used >= LIMIT) return;
+  hideJackpot(); audio(); sfx.pull();
   state.spinning = true; state.used++;
   const res = decideResult();
   refresh(); lamps(true); setMsg("轉動中…");
   const lv = el("lever"); lv.classList.add("pulled"); setTimeout(() => lv.classList.remove("pulled"), 260);
 
   const now = performance.now();
+  /* 前兩個一樣時,第三輪多轉一下、配拉高音,吊一下胃口 */
+  const tease = res.symbols[0] === res.symbols[1];
+  const durs = [1300, 1850, 2400 + (tease ? 1200 : 0)];
   reels.forEach((r, i) => {
     const L = r.strip.length, start = r.pos;
-    const base = Math.ceil(start) + L * (2 + i);
+    const base = Math.ceil(start) + L * (2 + i + (tease && i === 2 ? 1 : 0));
     let j = 0; while (r.strip[mod(base + j, L)] !== res.symbols[i]) j++;
-    r.anim = { start: start, target: base + j, t0: now, dur: 1300 + i * 550, done: false };
+    r.anim = { start: start, target: base + j, t0: now, dur: durs[i], done: false };
   });
+  sfx.spin(durs[2] / 1000 - 0.25);
+  if (tease) sfx.tease(durs[1] / 1000, (durs[2] - durs[1]) / 1000);
   state.result = res;
   requestAnimationFrame(tick);
   /* 保險:畫面被蓋住時瀏覽器會停掉動畫,時間到就直接停在結果,不會卡在「轉動中」 */
-  setTimeout(() => { if (state.spinning) tick(performance.now()); }, 1300 + 2 * 550 + 400);
+  setTimeout(() => { if (state.spinning) tick(performance.now()); }, durs[2] + 400);
 }
 
 function finish() {
@@ -420,14 +493,20 @@ function finish() {
   else { icx.imageSmoothingEnabled = false; icx.drawImage(MISS_SPRITE, 8, 8, 96, 96); }
   const tx = document.createElement("span"); tx.textContent = res.win ? "+" + res.prize : "沒中";
   item.appendChild(ic); item.appendChild(tx); tray.appendChild(item);
+  while (tray.querySelectorAll(".slotitem").length > 5) tray.querySelector(".slotitem").remove();
 
-  if (res.win) {
+  if (res.win && res.symbols[0] === 0) {
     state.total += res.prize;
-    setMsg((res.symbols[0] === 0 ? "大獎!" : "中獎!") + "星幣 +" + res.prize, true);
+    setMsg("大獎!星幣 +" + res.prize, true);
+    sfx.jackpot(); confetti(220); showJackpot(res.prize);
+    setTimeout(() => confetti(120), 900); setTimeout(() => confetti(120), 1800);
+  } else if (res.win) {
+    state.total += res.prize;
+    setMsg("中獎!星幣 +" + res.prize, true);
     sfx.win(res.prize >= 300); confetti(res.prize >= 300 ? 120 : 50);
-  } else { setMsg(state.used >= MAX_DRAWS ? "可惜沒中" : "差一點,再來!"); sfx.miss(); }
+  } else { setMsg(state.used >= LIMIT ? "可惜沒中" : "差一點,再來!"); sfx.miss(); }
 
-  if (state.used >= MAX_DRAWS) {
+  if (state.used >= LIMIT) {
     setTimeout(() => setMsg(state.total > 0 ? "抽完了,共獲得星幣 " + state.total : "抽完了,下次再來", state.total > 0), 1400);
   }
   refresh();
@@ -464,6 +543,7 @@ function reset() {
 el("pull").addEventListener("click", pull);
 el("lever").addEventListener("click", pull);
 el("reset").addEventListener("click", reset);
+el("show").addEventListener("click", hideJackpot);
 el("shop").addEventListener("click", () => { location.search = "?shop=" + (SHOP_ID === "haolilai" ? "benzun" : "haolilai"); });
 el("mute").addEventListener("click", () => { muted = !muted; el("mute").textContent = "音效:" + (muted ? "關" : "開"); });
 addEventListener("keydown", e => { if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); pull(); } });
