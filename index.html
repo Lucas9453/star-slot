@@ -635,6 +635,8 @@ if (CARD_MODE) {
   reels.forEach(r => { r.pos = r.strip.indexOf(0); drawReel(r); });
   el("counter").textContent = "免費抽獎";
   el("msg").textContent = "三個連線中大獎";
+  el("pull").textContent = "點我抽獎"; el("pull").style.letterSpacing = "0.15em";
+  const hint = document.querySelector("#tray .hint"); if (hint) hint.textContent = "拉一把,試試手氣";
 }
 /* 測試用:讓自動化檢查讀得到狀態 */
 window.__slot = { state: state, reels: reels, SYMBOLS: SYMBOLS, SPRITES: SPRITES, SHOP_ID: SHOP_ID, decideResult: decideResult, drawReel: drawReel };
