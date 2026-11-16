@@ -615,7 +615,11 @@ el("lever").addEventListener("click", pull);
 el("reset").addEventListener("click", reset);
 el("show").addEventListener("click", hideJackpot);
 /* 試聽按鈕:只有測試機才有 */
-if (!TEST_MODE) el("audition").style.display = "none";
+/* 上方三顆(音效、換商號、重置)和下方試聽列平常都藏起來;網址加 &debug=1 才會出現,給開發時用 */
+if (new URLSearchParams(location.search).get("debug") !== "1") {
+  el("audition").style.display = "none";
+  document.querySelector(".tools").style.display = "none";
+}
 el("audition").addEventListener("click", e => {
   const s = e.target.dataset.s; if (!s) return;
   audio();
