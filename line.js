@@ -1,5 +1,5 @@
 /* LINE 正式版模式(index.html?line=1 才載入)。261117
-   - 身分:LIFF 拿 LINE 的 ID token,每次呼叫老賈都帶著,老賈自己去 LINE 驗,只認驗回來的人
+   - 身分:LIFF 拿 LINE 的 ID token,每次呼叫老賈都帶著，老賈自己去 LINE 驗，只認驗回來的人
    - 次數、結果、記帳都在老賈(jarvis /slot/api/*);這裡只負責畫面
    規格:cowork-workspace/02_留存紀錄/261116_star_slot/spec_binding_spin_261117.md */
 (function () {
@@ -14,7 +14,7 @@
   }
   const A = window.__slotApi;
   const SHOPN = A.SHOP.name;
-  const CS = SHOPN + "客服";   /* 261117 Tai:客服一律寫商號客服,不用通稱(好利來客服 / 本尊吉客發客服) */
+  const CS = SHOPN + "客服";   /* 261117 Tai:客服一律寫商號客服，不用通稱(好利來客服 / 本尊吉客發客服) */
   const st = A.state, el = A.el;
   const acct = { ready: false, bound: false, status: "", role: "", total: 0, used: 0, remaining: 0 };
   let idToken = "", busy = false, auto = false, sessionSpins = 0, sessionPrize = 0;
@@ -78,7 +78,7 @@
         if (r.status === 401 && j.relogin && i === 0) { liff.logout(); liff.login({ redirectUri: location.href }); return j; }
         return j;
       } catch (e) {
-        if (i === tries - 1) return { ok: false, error: "連不到老賈,請稍後再試", _status: 0 };
+        if (i === tries - 1) return { ok: false, error: "連不到老賈，請稍後再試", _status: 0 };
         await new Promise(res => setTimeout(res, 1200));
       }
     }
@@ -96,9 +96,9 @@
     const n = acct.total, y = acct.remaining, x = Math.min(acct.used + (st.spinning ? 0 : 1), n);
     el("counter").textContent = y > 0 ? "還剩 " + y + " 轉" : "轉完了";
     info.innerHTML = acct.role ? esc(acct.role) + "|" + (y > 0 ? "第 <b>" + x + "</b> 轉 / 共 " + n + " 轉 還剩 <b>" + y + "</b> 轉" + (y === 1 && !st.spinning ? "(最後一轉)" : "")
-                                                       : "共 " + n + " 轉,已全部轉完") : "";
+                                                       : "共 " + n + " 轉，已全部轉完") : "";
     pullBtn.disabled = st.spinning || busy || y <= 0;
-    pullBtn.textContent = y <= 0 && !st.spinning ? "轉完了" : (y === 1 ? "最後一轉!" : "拉!");
+    pullBtn.textContent = y <= 0 && !st.spinning ? "轉完了" : (y === 1 ? "最後一轉！" : "拉！");
     autoBtn.disabled = st.spinning || busy || y <= 1 || auto;
     autoBtn.style.display = y > 1 || auto ? "" : "none";
   }
@@ -114,7 +114,7 @@
     if (!j.ok || !j.result) {
       auto = false;
       if (typeof j.remaining === "number") apply(j);
-      A.setMsg(j.error || "這一轉沒成功,請再按一次"); refresh(); return;
+      A.setMsg(j.error || "這一轉沒成功，請再按一次"); refresh(); return;
     }
     apply(j); sessionSpins++; sessionPrize += j.result.prize || 0;
     A.startSpin(j.result);
@@ -124,39 +124,39 @@
     if (acct.remaining <= 0) {
       auto = false;
       setTimeout(() => {
-        A.setMsg(sessionPrize > 0 ? "轉完了!本次獲得星幣 " + sessionPrize : "轉完了,下次再來", sessionPrize > 0);
+        A.setMsg(sessionPrize > 0 ? "轉完了！本次獲得星幣 " + sessionPrize : "轉完了，下次再來", sessionPrize > 0);
         overlay('<h2>謝謝您的參與</h2><div class="lm-big">' + (sessionPrize > 0 ? "星幣 " + sessionPrize : "下次再來") + "</div>" +
           (sessionPrize > 0
-            ? "<div>本次共轉 " + sessionSpins + " 次,獲得星幣 " + sessionPrize + "。中獎回饋會由" + CS + "確認後發放。</div>"
-            : "<div>本次共轉 " + sessionSpins + " 次,這次運氣稍微害羞了一點。累計儲值滿額會再送次數,下次再來試試手氣!</div>") +
+            ? "<div>本次共轉 " + sessionSpins + " 次，獲得星幣 " + sessionPrize + "。中獎回饋會由" + CS + "確認後發放。</div>"
+            : "<div>本次共轉 " + sessionSpins + " 次，這次運氣稍微害羞了一點。累計儲值滿額會再送次數，下次再來試試手氣！</div>") +
           '<button id="lmclose">好</button>');
         document.getElementById("lmclose").onclick = closeOverlay;
       }, res.win && res.symbols[0] === 0 ? 4800 : 1400);
     } else if (auto) {
       setTimeout(pull, res.win ? (res.symbols[0] === 0 ? 4800 : 1800) : 900);
     } else if (acct.remaining === 1) {
-      setTimeout(() => A.setMsg("剩最後一轉!"), 1400);
+      setTimeout(() => A.setMsg("剩最後一轉！"), 1400);
     }
     refresh();
   }
 
-  /* 還有次數就離開:跳提醒(次數不會過期,下次進來還在) */
+  /* 還有次數就離開:跳提醒(次數不會過期，下次進來還在) */
   addEventListener("beforeunload", e => { if (acct.ready && acct.remaining > 0) { e.preventDefault(); e.returnValue = ""; } });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && acct.ready && acct.remaining > 0 && !st.spinning && !busy && !auto)
-      A.setMsg("還剩 " + acct.remaining + " 次,次數會為您保留");
+      A.setMsg("還剩 " + acct.remaining + " 次，次數會為您保留");
   });
 
   /* ---------- 綁定 ---------- */
   /* 活動說明與同意事項:261117 Tai 給的「星期五」潤筆版(第二則),照原文 */
-  const TERMS_INTRO = "親愛的玩家,您好!謝謝您一直以來的支持。為了讓這份回饋順利送到您手上,綁定前請花一分鐘看看以下說明。閱讀並同意後,就可以繼續綁定角色。";
+  const TERMS_INTRO = "親愛的玩家，您好！謝謝您一直以來的支持。為了讓這份回饋順利送到您手上，綁定前請花一分鐘看看以下說明。閱讀並同意後，就可以繼續綁定角色。";
   const TERMS_ITEMS = [
-    ["① 回饋次數怎麼算", "這是我們為您準備的回饋贈禮,參加無須另外付費。回饋次數依您的遊戲角色累計儲值金額計算,目前每滿 500 元可轉 1 次,計算方式可能隨活動調整。"],
-    ["② 您的資料會用在哪裡", "我們會使用您的 LINE 顯示名稱與識別碼,確認角色是由您本人綁定,並記錄回饋結果。資料僅用於本活動的身分確認、回饋發放與客服查核。"],
-    ["③ 綁定後想更換 LINE 帳號", "每個遊戲角色限綁定一個 LINE 帳號。綁定後如需更換,歡迎聯繫" + CS + ",我們會協助您處理。"],
-    ["④ 中獎後怎麼領取", "中獎回饋會由" + CS + "確認後發放。如果收到自稱可以「代領」或「代辦」的訊息,請勿相信。有疑問,歡迎向" + CS + "確認。"],
-    ["⑤ 這次沒轉完,下次可以接著轉", "剩下的次數會為您保留。下次從" + SHOPN + " LINE 的選單進入活動,就可以接著轉。"],
-    ["⑥ 活動規則與異常處理", "回饋內容與活動規則以" + SHOPN + "公告為準。如發現冒用、異常或違反活動規定,主辦方得取消活動資格與回饋,並保留調整、暫停或終止活動的權利。"]
+    ["① 回饋次數怎麼算", "這是我們為您準備的回饋贈禮，參加無須另外付費。回饋次數依您的遊戲角色累計儲值金額計算，目前每滿 500 元可轉 1 次，計算方式可能隨活動調整。"],
+    ["② 您的資料會用在哪裡", "我們會使用您的 LINE 顯示名稱與識別碼，確認角色是由您本人綁定，並記錄回饋結果。資料僅用於本活動的身分確認、回饋發放與客服查核。"],
+    ["③ 綁定後想更換 LINE 帳號", "每個遊戲角色限綁定一個 LINE 帳號。綁定後如需更換，歡迎聯繫" + CS + ",我們會協助您處理。"],
+    ["④ 中獎後怎麼領取", "中獎回饋會由" + CS + "確認後發放。如果收到自稱可以「代領」或「代辦」的訊息，請勿相信。有疑問，歡迎向" + CS + "確認。"],
+    ["⑤ 這次沒轉完，下次可以接著轉", "剩下的次數會為您保留。下次從" + SHOPN + " LINE 的選單進入活動，就可以接著轉。"],
+    ["⑥ 活動規則與異常處理", "回饋內容與活動規則以" + SHOPN + "公告為準。如發現冒用、異常或違反活動規定，主辦方得取消活動資格與回饋，並保留調整、暫停或終止活動的權利。"]
   ];
   const TERMS = "<p>" + esc(TERMS_INTRO) + "</p>" +
     TERMS_ITEMS.map(t => '<p><b class="th">' + esc(t[0]) + "</b><br>" + esc(t[1]) + "</p>").join("");
@@ -173,7 +173,7 @@
       go.disabled = true; go.textContent = "核對中…";
       const j = await api("bind", { role: role.value.trim(), consent: true, shop: A.SHOP_ID });
       go.textContent = "送出綁定";
-      if (!j.ok) { document.getElementById("lmerr").textContent = j.error || "送出失敗,請再試一次"; upd(); return; }
+      if (!j.ok) { document.getElementById("lmerr").textContent = j.error || "送出失敗，請再試一次"; upd(); return; }
       apply(j);
       if (j.bound && j.status === "通過") { closeOverlay(); welcome(); }
       else showWait(j.status === "衝突");
@@ -181,20 +181,20 @@
   }
   function showWait(conflict) {
     acct.ready = false; refresh();
-    el("counter").textContent = "核對中"; A.setMsg("核對中,請稍候");
+    el("counter").textContent = "核對中"; A.setMsg("核對中，請稍候");
     if (conflict) overlay("<h2>需要" + CS + "協助</h2><div>這個角色已經綁定過了。我們已通知" + CS + ",會盡快協助您確認。</div>");
-    else overlay("<h2>收到囉</h2><div>謝謝您!我們正在幫您核對資料,確認好之後,從" + SHOPN + " LINE 選單進來就可以開始。</div>");
+    else overlay("<h2>收到囉</h2><div>謝謝您！我們正在幫您核對資料，確認好之後，從" + SHOPN + " LINE 選單進來就可以開始。</div>");
   }
   function welcome() {
     acct.ready = true; refresh();
     if (acct.remaining > 0) {
       A.setMsg("拉下拉桿試試手氣");
       overlay("<h2>" + esc(acct.role) + "</h2><div class=\"lm-big\">您可以轉 " + acct.remaining + " 次</div>" +
-        "<div style=\"text-align:center\">共 " + acct.total + " 次,已轉 " + acct.used + " 次。祝您好運!</div><button id=\"lmstart\">開始</button>");
+        "<div style=\"text-align:center\">共 " + acct.total + " 次，已轉 " + acct.used + " 次。祝您好運！</div><button id=\"lmstart\">開始</button>");
       document.getElementById("lmstart").onclick = () => { closeOverlay(); A.audio(); };
     } else {
       A.setMsg("目前還沒有回饋次數");
-      overlay("<h2>" + esc(acct.role) + "</h2><div class=\"lm-big\">目前 0 次</div><div>目前還沒有回饋次數。累計儲值滿額後就會自動增加,到時再從" + SHOPN + " LINE 選單進來就可以囉。</div>" +
+      overlay("<h2>" + esc(acct.role) + "</h2><div class=\"lm-big\">目前 0 次</div><div>目前還沒有回饋次數。累計儲值滿額後就會自動增加，到時再從" + SHOPN + " LINE 選單進來就可以囉。</div>" +
         '<button id="lmclose">好</button>');
       document.getElementById("lmclose").onclick = closeOverlay;
     }
@@ -209,9 +209,9 @@
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
       idToken = liff.getIDToken() || "";
-      if (!idToken) { fail("拿不到 LINE 身分,請從" + SHOPN + " LINE 選單重新進來"); return; }
+      if (!idToken) { fail("拿不到 LINE 身分，請從" + SHOPN + " LINE 選單重新進來"); return; }
       const j = await api("me");
-      if (!j.ok) { fail(j.error || "連不到老賈,請稍後再試"); return; }
+      if (!j.ok) { fail(j.error || "連不到老賈，請稍後再試"); return; }
       apply(j);
       if (!j.bound) { el("counter").textContent = "請先綁定"; A.setMsg("請先綁定遊戲角色"); showBind(); }
       else if (j.status === "通過") welcome();
@@ -224,7 +224,7 @@
   else {
     const sdk = document.createElement("script");
     sdk.src = "https://static.line-scdn.net/liff/edge/2/sdk.js";
-    sdk.onerror = () => fail("LINE 元件載入失敗,請關掉重開");
+    sdk.onerror = () => fail("LINE 元件載入失敗，請關掉重開");
     sdk.onload = start;
     document.head.appendChild(sdk);
   }
