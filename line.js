@@ -53,10 +53,11 @@
   const stageEl = stage;
   stageEl.style.visibility = "hidden";          /* 先藏拉霸機:確認是「已綁定且通過」才露出來 */
   stage.insertBefore(info, stage.firstChild);
-  const autoBtn = document.createElement("button");
-  autoBtn.className = "autobtn"; autoBtn.id = "autoall"; autoBtn.textContent = "一鍵轉完剩下的";
-  el("pull").after(autoBtn);
-  autoBtn.addEventListener("click", () => { if (!acct.ready || busy || st.spinning || acct.remaining <= 0) return; auto = true; A.audio(); pull(); });
+  /* 261117 Tai:不分兩顆按鈕,只留「拉!」,按一下就把剩下的次數全部自動轉完(拉桿、空白鍵同一顆) */
+  function pullAll() {
+    if (!acct.ready || busy || st.spinning || auto || acct.remaining <= 0) return;
+    auto = true; A.audio(); pull();
+  }
 
   function overlay(html) {
     closeOverlay();
@@ -98,15 +99,13 @@
   /* ---------- 畫面 ---------- */
   function refresh() {
     const pullBtn = el("pull");
-    if (!acct.ready) { pullBtn.disabled = true; autoBtn.disabled = true; return; }
+    if (!acct.ready) { pullBtn.disabled = true; return; }
     const n = acct.total, y = acct.remaining, x = Math.min(acct.used + (st.spinning ? 0 : 1), n);
     el("counter").textContent = y > 0 ? "還剩 " + y + " 轉" : "轉完了";
     info.innerHTML = acct.role ? esc(acct.role) + "|" + (y > 0 ? "第 <b>" + x + "</b> 轉 / 共 " + n + " 轉 還剩 <b>" + y + "</b> 轉" + (y === 1 && !st.spinning ? "(最後一轉)" : "")
                                                        : "共 " + n + " 轉，已全部轉完") : "";
-    pullBtn.disabled = st.spinning || busy || y <= 0;
-    pullBtn.textContent = y <= 0 && !st.spinning ? "轉完了" : (y === 1 ? "最後一轉！" : "拉！");
-    autoBtn.disabled = st.spinning || busy || y <= 1 || auto;
-    autoBtn.style.display = y > 1 || auto ? "" : "none";
+    pullBtn.disabled = st.spinning || busy || auto || y <= 0;
+    pullBtn.textContent = auto ? "轉動中…" : (y <= 0 && !st.spinning ? "轉完了" : "拉！");
   }
 
   async function pull() {
@@ -221,7 +220,7 @@
   }
 
   /* ---------- 開始 ---------- */
-  window.LINEMODE = { pull: pull, refresh: refresh, afterFinish: afterFinish, acct: acct };
+  window.LINEMODE = { pull: pullAll, refresh: refresh, afterFinish: afterFinish, acct: acct };
   function fail(msg) { el("counter").textContent = "無法開始"; A.setMsg(msg); overlay("<h2>無法開始</h2><div>" + esc(msg) + "</div>"); }
 
   async function start() {
