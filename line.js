@@ -46,6 +46,8 @@
   const info = document.createElement("div");
   info.className = "lineinfo"; info.id = "lineinfo";
   const stage = document.querySelector(".stage");
+  const stageEl = stage;
+  stageEl.style.visibility = "hidden";          /* 先藏拉霸機:確認是「已綁定且通過」才露出來 */
   stage.insertBefore(info, stage.firstChild);
   const autoBtn = document.createElement("button");
   autoBtn.className = "autobtn"; autoBtn.id = "autoall"; autoBtn.textContent = "一鍵轉完剩下的";
@@ -175,17 +177,31 @@
       go.textContent = "送出綁定";
       if (!j.ok) { document.getElementById("lmerr").textContent = j.error || "送出失敗，請再試一次"; upd(); return; }
       apply(j);
-      if (j.bound && j.status === "通過") { closeOverlay(); welcome(); }
+      if (j.bound && j.status === "通過") bindDone();
       else showWait(j.status === "衝突");
+    };
+  }
+  /* 261117 Tai:「送出綁定後 不要有拉霸的畫面出現」→ 綁好只顯示完成與次數,要玩從選單再進來 */
+  function bindDone() {
+    acct.ready = false; refresh();
+    overlay("<h2>綁定完成</h2><div class=\"lm-big\">" + esc(acct.role) + "</div>" +
+      "<div>您的遊戲角色已經和 LINE 帳號完成綁定囉！" +
+      (acct.remaining > 0 ? "目前可以轉 " + acct.remaining + " 次，" : "目前還沒有回饋次數，累計儲值滿額後就會自動增加，") +
+      "請從" + SHOPN + " LINE 下方選單進入拉霸，就可以開始轉囉！</div>" +
+      '<button id="lmclose">好</button>');
+    document.getElementById("lmclose").onclick = () => {
+      try { if (window.liff && liff.closeWindow) { liff.closeWindow(); return; } } catch (e) {}
+      overlay("<h2>綁定完成</h2><div>可以關閉這個頁面了。</div>");
     };
   }
   function showWait(conflict) {
     acct.ready = false; refresh();
     el("counter").textContent = "核對中"; A.setMsg("核對中，請稍候");
-    if (conflict) overlay("<h2>需要" + CS + "協助</h2><div>這個角色已經綁定過了。我們已通知" + CS + ",會盡快協助您確認。</div>");
+    if (conflict) overlay("<h2>需要" + CS + "協助</h2><div>這個角色已經綁定過了。我們已通知" + CS + "，會盡快協助您確認。</div>");
     else overlay("<h2>收到囉</h2><div>謝謝您！我們正在幫您核對資料，確認好之後，從" + SHOPN + " LINE 選單進來就可以開始。</div>");
   }
   function welcome() {
+    stageEl.style.visibility = "visible";        /* 通過的人才看得到拉霸機 */
     acct.ready = true; refresh();
     if (acct.remaining > 0) {
       A.setMsg("拉下拉桿試試手氣");
@@ -205,6 +221,7 @@
   function fail(msg) { el("counter").textContent = "無法開始"; A.setMsg(msg); overlay("<h2>無法開始</h2><div>" + esc(msg) + "</div>"); }
 
   async function start() {
+    overlay("<h2>" + esc(SHOPN) + "</h2><div style=\"text-align:center\">正在確認您的 LINE…</div>");
     try {
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
