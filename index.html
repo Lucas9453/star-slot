@@ -189,7 +189,7 @@
 const MAX_DRAWS = 3;
 /* 測試機:大獎三次出一次、不限次數。正式上線前改成 false */
 const TEST_MODE = true;
-/* LINE 正式版模式(網址加 &line=1,從官方帳號圖文選單經 LIFF 進來):結果由老賈決定、次數看老賈的帳,程式在 line.js */
+/* LINE 正式版模式(網址加 &line=1,從 LINE 圖文選單經 LIFF 進來):結果由老賈決定、次數看老賈的帳,程式在 line.js */
 const LINE = new URLSearchParams(location.search).get("line") === "1";
 let LIMIT = LINE ? 0 : (TEST_MODE ? Infinity : MAX_DRAWS);
 /* 兩家商號各自一版,不會同時出現。網址加 ?shop=haolilai 或 ?shop=benzun 決定是哪一家 */

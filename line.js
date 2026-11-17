@@ -13,6 +13,8 @@
     window.liff = { init: async () => {}, isLoggedIn: () => true, getIDToken: () => QS.get("mockliff"), login() {}, logout() {} };
   }
   const A = window.__slotApi;
+  const SHOPN = A.SHOP.name;
+  const CS = SHOPN + "客服";   /* 261117 Tai:客服一律寫商號客服,不用通稱(好利來客服 / 本尊吉客發客服) */
   const st = A.state, el = A.el;
   const acct = { ready: false, bound: false, status: "", role: "", total: 0, used: 0, remaining: 0 };
   let idToken = "", busy = false, auto = false, sessionSpins = 0, sessionPrize = 0;
@@ -125,7 +127,7 @@
         A.setMsg(sessionPrize > 0 ? "轉完了!本次獲得星幣 " + sessionPrize : "轉完了,下次再來", sessionPrize > 0);
         overlay('<h2>謝謝您的參與</h2><div class="lm-big">' + (sessionPrize > 0 ? "星幣 " + sessionPrize : "下次再來") + "</div>" +
           (sessionPrize > 0
-            ? "<div>本次共轉 " + sessionSpins + " 次,獲得星幣 " + sessionPrize + "。中獎回饋會由官方客服確認後發放。</div>"
+            ? "<div>本次共轉 " + sessionSpins + " 次,獲得星幣 " + sessionPrize + "。中獎回饋會由" + CS + "確認後發放。</div>"
             : "<div>本次共轉 " + sessionSpins + " 次,這次運氣稍微害羞了一點。累計儲值滿額會再送次數,下次再來試試手氣!</div>") +
           '<button id="lmclose">好</button>');
         document.getElementById("lmclose").onclick = closeOverlay;
@@ -151,10 +153,10 @@
   const TERMS_ITEMS = [
     ["① 回饋次數怎麼算", "這是我們為您準備的回饋贈禮,參加無須另外付費。回饋次數依您的遊戲角色累計儲值金額計算,目前每滿 500 元可轉 1 次,計算方式可能隨活動調整。"],
     ["② 您的資料會用在哪裡", "我們會使用您的 LINE 顯示名稱與識別碼,確認角色是由您本人綁定,並記錄回饋結果。資料僅用於本活動的身分確認、回饋發放與客服查核。"],
-    ["③ 綁定後想更換 LINE 帳號", "每個遊戲角色限綁定一個 LINE 帳號。綁定後如需更換,歡迎聯繫官方客服,我們會協助您處理。"],
-    ["④ 中獎後怎麼領取", "中獎回饋會由官方客服確認後發放。如果收到自稱可以「代領」或「代辦」的訊息,請勿相信。有疑問,歡迎向官方客服確認。"],
-    ["⑤ 這次沒轉完,下次可以接著轉", "剩下的次數會為您保留。下次從 LINE 官方帳號的選單進入活動,就可以接著轉。"],
-    ["⑥ 活動規則與異常處理", "回饋內容與活動規則以官方公告為準。如發現冒用、異常或違反活動規定,主辦方得取消活動資格與回饋,並保留調整、暫停或終止活動的權利。"]
+    ["③ 綁定後想更換 LINE 帳號", "每個遊戲角色限綁定一個 LINE 帳號。綁定後如需更換,歡迎聯繫" + CS + ",我們會協助您處理。"],
+    ["④ 中獎後怎麼領取", "中獎回饋會由" + CS + "確認後發放。如果收到自稱可以「代領」或「代辦」的訊息,請勿相信。有疑問,歡迎向" + CS + "確認。"],
+    ["⑤ 這次沒轉完,下次可以接著轉", "剩下的次數會為您保留。下次從" + SHOPN + " LINE 的選單進入活動,就可以接著轉。"],
+    ["⑥ 活動規則與異常處理", "回饋內容與活動規則以" + SHOPN + "公告為準。如發現冒用、異常或違反活動規定,主辦方得取消活動資格與回饋,並保留調整、暫停或終止活動的權利。"]
   ];
   const TERMS = "<p>" + esc(TERMS_INTRO) + "</p>" +
     TERMS_ITEMS.map(t => '<p><b class="th">' + esc(t[0]) + "</b><br>" + esc(t[1]) + "</p>").join("");
@@ -180,8 +182,8 @@
   function showWait(conflict) {
     acct.ready = false; refresh();
     el("counter").textContent = "核對中"; A.setMsg("核對中,請稍候");
-    if (conflict) overlay("<h2>需要客服協助</h2><div>這個角色已經綁定過了。我們已通知客服,會盡快協助您確認。</div>");
-    else overlay("<h2>收到囉</h2><div>謝謝您!我們正在幫您核對資料,確認好之後,從官方帳號選單進來就可以開始。</div>");
+    if (conflict) overlay("<h2>需要" + CS + "協助</h2><div>這個角色已經綁定過了。我們已通知" + CS + ",會盡快協助您確認。</div>");
+    else overlay("<h2>收到囉</h2><div>謝謝您!我們正在幫您核對資料,確認好之後,從" + SHOPN + " LINE 選單進來就可以開始。</div>");
   }
   function welcome() {
     acct.ready = true; refresh();
@@ -192,7 +194,7 @@
       document.getElementById("lmstart").onclick = () => { closeOverlay(); A.audio(); };
     } else {
       A.setMsg("目前還沒有回饋次數");
-      overlay("<h2>" + esc(acct.role) + "</h2><div class=\"lm-big\">目前 0 次</div><div>目前還沒有回饋次數。累計儲值滿額後就會自動增加,到時再從官方帳號選單進來就可以囉。</div>" +
+      overlay("<h2>" + esc(acct.role) + "</h2><div class=\"lm-big\">目前 0 次</div><div>目前還沒有回饋次數。累計儲值滿額後就會自動增加,到時再從" + SHOPN + " LINE 選單進來就可以囉。</div>" +
         '<button id="lmclose">好</button>');
       document.getElementById("lmclose").onclick = closeOverlay;
     }
@@ -207,7 +209,7 @@
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
       idToken = liff.getIDToken() || "";
-      if (!idToken) { fail("拿不到 LINE 身分,請從官方帳號選單的「拉霸」重新進來"); return; }
+      if (!idToken) { fail("拿不到 LINE 身分,請從" + SHOPN + " LINE 選單重新進來"); return; }
       const j = await api("me");
       if (!j.ok) { fail(j.error || "連不到老賈,請稍後再試"); return; }
       apply(j);
@@ -215,7 +217,7 @@
       else if (j.status === "通過") welcome();
       else showWait(j.status === "衝突");
     } catch (e) {
-      fail("LINE 登入沒成功(" + (e && e.message ? e.message : e) + "),請從官方帳號選單重新進來");
+      fail("LINE 登入沒成功(" + (e && e.message ? e.message : e) + "),請從" + SHOPN + " LINE 選單重新進來");
     }
   }
   if (window.liff) start();
