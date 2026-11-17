@@ -30,6 +30,8 @@
              padding: 18px 16px; color: #f6e9c8; font-size: 15px; font-weight: 700; line-height: 1.6; }
   .lm-card h2 { margin: 0 0 10px; color: #ffd83d; font-size: 20px; text-align: center; letter-spacing: 0.08em; }
   .lm-card .terms { background: #160a14; padding: 10px 12px; font-size: 13px; font-weight: 500; max-height: 34vh; overflow: auto; }
+  .lm-card .terms p { margin: 0 0 8px; }
+  .lm-card .terms .th { color: #ffd83d; }
   .lm-card label { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; }
   .lm-card input[type=text] { width: 100%; font: inherit; font-size: 17px; padding: 8px; border: 2px solid #f7c531; background: #fff; color: #222; }
   .lm-card button { display: block; width: 100%; margin-top: 12px; border: 0; font: inherit; font-size: 18px; padding: 10px 0; cursor: pointer;
@@ -121,9 +123,10 @@
       auto = false;
       setTimeout(() => {
         A.setMsg(sessionPrize > 0 ? "轉完了!本次獲得星幣 " + sessionPrize : "轉完了,下次再來", sessionPrize > 0);
-        overlay('<h2>轉完了</h2><div class="lm-big">' + (sessionPrize > 0 ? "星幣 " + sessionPrize : "這次沒中") + "</div>" +
-          "<div>這次轉了 " + sessionSpins + " 轉" + (sessionPrize > 0 ? ",中獎的星幣會由客服確認後發放。" : "。") + "</div>" +
-          "<div>之後再儲值滿額,就會有新的次數,從官方帳號選單的「拉霸」進來即可。</div>" +
+        overlay('<h2>謝謝您的參與</h2><div class="lm-big">' + (sessionPrize > 0 ? "星幣 " + sessionPrize : "下次再來") + "</div>" +
+          (sessionPrize > 0
+            ? "<div>本次共轉 " + sessionSpins + " 次,獲得星幣 " + sessionPrize + "。中獎回饋會由官方客服確認後發放。</div>"
+            : "<div>本次共轉 " + sessionSpins + " 次,這次運氣稍微害羞了一點。累計儲值滿額會再送次數,下次再來試試手氣!</div>") +
           '<button id="lmclose">好</button>');
         document.getElementById("lmclose").onclick = closeOverlay;
       }, res.win && res.symbols[0] === 0 ? 4800 : 1400);
@@ -139,52 +142,57 @@
   addEventListener("beforeunload", e => { if (acct.ready && acct.remaining > 0) { e.preventDefault(); e.returnValue = ""; } });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && acct.ready && acct.remaining > 0 && !st.spinning && !busy && !auto)
-      A.setMsg("還剩 " + acct.remaining + " 轉,次數會保留");
+      A.setMsg("還剩 " + acct.remaining + " 次,次數會為您保留");
   });
 
   /* ---------- 綁定 ---------- */
-  const TERMS = [
-    "【活動說明與同意事項(測試版,正式內容以公告為準)】",
-    "1. 本拉霸為儲值滿額回饋活動,次數依您的遊戲角色累計儲值金額計算(目前每滿 500 元 1 次,規則可能調整)。",
-    "2. 為確認您是角色本人並記錄抽獎結果,我們會使用您的 LINE 內部識別碼與顯示名稱,僅用於本活動與客服查核。",
-    "3. 一個遊戲角色只能綁定一個 LINE 帳號;綁定後如需更換,請洽客服。",
-    "4. 抽中的獎勵須經客服審核後發放;如有冒用、異常或違反規定,主辦方得取消資格。",
-    "5. 沒轉完的次數會保留,下次從官方帳號選單進來可以繼續。"
-  ].map(esc).join("<br>");
+  /* 活動說明與同意事項:261117 Tai 給的「星期五」潤筆版(第二則),照原文 */
+  const TERMS_INTRO = "親愛的玩家,您好!謝謝您一直以來的支持。為了讓這份回饋順利送到您手上,綁定前請花一分鐘看看以下說明。閱讀並同意後,就可以繼續綁定角色。";
+  const TERMS_ITEMS = [
+    ["① 回饋次數怎麼算", "這是我們為您準備的回饋贈禮,參加無須另外付費。回饋次數依您的遊戲角色累計儲值金額計算,目前每滿 500 元可轉 1 次,計算方式可能隨活動調整。"],
+    ["② 您的資料會用在哪裡", "我們會使用您的 LINE 顯示名稱與識別碼,確認角色是由您本人綁定,並記錄回饋結果。資料僅用於本活動的身分確認、回饋發放與客服查核。"],
+    ["③ 綁定後想更換 LINE 帳號", "每個遊戲角色限綁定一個 LINE 帳號。綁定後如需更換,歡迎聯繫官方客服,我們會協助您處理。"],
+    ["④ 中獎後怎麼領取", "中獎回饋會由官方客服確認後發放。如果收到自稱可以「代領」或「代辦」的訊息,請勿相信。有疑問,歡迎向官方客服確認。"],
+    ["⑤ 這次沒轉完,下次可以接著轉", "剩下的次數會為您保留。下次從 LINE 官方帳號的選單進入活動,就可以接著轉。"],
+    ["⑥ 活動規則與異常處理", "回饋內容與活動規則以官方公告為準。如發現冒用、異常或違反活動規定,主辦方得取消活動資格與回饋,並保留調整、暫停或終止活動的權利。"]
+  ];
+  const TERMS = "<p>" + esc(TERMS_INTRO) + "</p>" +
+    TERMS_ITEMS.map(t => '<p><b class="th">' + esc(t[0]) + "</b><br>" + esc(t[1]) + "</p>").join("");
 
   function showBind(note) {
-    overlay('<h2>綁定遊戲角色</h2><div class="terms">' + TERMS + "</div>" +
+    overlay('<h2>贈禮回饋綁定</h2><div class="terms">' + TERMS + "</div>" +
       '<label><input type="checkbox" id="lmagree"> 我已閱讀並同意以上說明</label>' +
       '<div>請輸入您的遊戲角色名稱(只需要填一次)</div><input type="text" id="lmrole" maxlength="30" autocomplete="off">' +
-      '<div class="err" id="lmerr">' + esc(note || "") + '</div><button id="lmgo" disabled>送出</button>');
+      '<div class="err" id="lmerr">' + esc(note || "") + '</div><button id="lmgo" disabled>送出綁定</button>');
     const agree = document.getElementById("lmagree"), role = document.getElementById("lmrole"), go = document.getElementById("lmgo");
     const upd = () => { go.disabled = !(agree.checked && role.value.trim()); };
     agree.onchange = upd; role.oninput = upd;
     go.onclick = async () => {
       go.disabled = true; go.textContent = "核對中…";
       const j = await api("bind", { role: role.value.trim(), consent: true, shop: A.SHOP_ID });
-      go.textContent = "送出";
+      go.textContent = "送出綁定";
       if (!j.ok) { document.getElementById("lmerr").textContent = j.error || "送出失敗,請再試一次"; upd(); return; }
       apply(j);
       if (j.bound && j.status === "通過") { closeOverlay(); welcome(); }
-      else showWait(j.message || "資料核對中,客服確認後就能開始玩。");
+      else showWait(j.status === "衝突");
     };
   }
-  function showWait(msg) {
+  function showWait(conflict) {
     acct.ready = false; refresh();
     el("counter").textContent = "核對中"; A.setMsg("核對中,請稍候");
-    overlay("<h2>收到了</h2><div>" + esc(msg) + "</div><div>確認好之後,從官方帳號選單的「拉霸」重新進來就可以玩。</div>");
+    if (conflict) overlay("<h2>需要客服協助</h2><div>這個角色已經綁定過了。我們已通知客服,會盡快協助您確認。</div>");
+    else overlay("<h2>收到囉</h2><div>謝謝您!我們正在幫您核對資料,確認好之後,從官方帳號選單進來就可以開始。</div>");
   }
   function welcome() {
     acct.ready = true; refresh();
     if (acct.remaining > 0) {
       A.setMsg("拉下拉桿試試手氣");
-      overlay("<h2>" + esc(acct.role) + "</h2><div class=\"lm-big\">您有 " + acct.remaining + " 轉</div>" +
-        "<div style=\"text-align:center\">共 " + acct.total + " 轉,已轉 " + acct.used + " 轉</div><button id=\"lmstart\">開始</button>");
+      overlay("<h2>" + esc(acct.role) + "</h2><div class=\"lm-big\">您可以轉 " + acct.remaining + " 次</div>" +
+        "<div style=\"text-align:center\">共 " + acct.total + " 次,已轉 " + acct.used + " 次。祝您好運!</div><button id=\"lmstart\">開始</button>");
       document.getElementById("lmstart").onclick = () => { closeOverlay(); A.audio(); };
     } else {
-      A.setMsg("目前沒有可轉的次數");
-      overlay("<h2>" + esc(acct.role) + "</h2><div class=\"lm-big\">目前 0 轉</div><div>儲值滿額後就會有次數,再從官方帳號選單的「拉霸」進來。</div>" +
+      A.setMsg("目前還沒有回饋次數");
+      overlay("<h2>" + esc(acct.role) + "</h2><div class=\"lm-big\">目前 0 次</div><div>目前還沒有回饋次數。累計儲值滿額後就會自動增加,到時再從官方帳號選單進來就可以囉。</div>" +
         '<button id="lmclose">好</button>');
       document.getElementById("lmclose").onclick = closeOverlay;
     }
@@ -205,7 +213,7 @@
       apply(j);
       if (!j.bound) { el("counter").textContent = "請先綁定"; A.setMsg("請先綁定遊戲角色"); showBind(); }
       else if (j.status === "通過") welcome();
-      else showWait(j.status === "衝突" ? "這個角色已經被綁定了,我們已通知客服協助確認。" : "資料核對中,客服確認後就能開始玩,請稍候。");
+      else showWait(j.status === "衝突");
     } catch (e) {
       fail("LINE 登入沒成功(" + (e && e.message ? e.message : e) + "),請從官方帳號選單重新進來");
     }
