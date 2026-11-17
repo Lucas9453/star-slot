@@ -189,7 +189,9 @@
 const MAX_DRAWS = 3;
 /* 測試機:大獎三次出一次、不限次數。正式上線前改成 false */
 const TEST_MODE = true;
-const LIMIT = TEST_MODE ? Infinity : MAX_DRAWS;
+/* LINE 正式版模式(網址加 &line=1,從官方帳號圖文選單經 LIFF 進來):結果由老賈決定、次數看老賈的帳,程式在 line.js */
+const LINE = new URLSearchParams(location.search).get("line") === "1";
+let LIMIT = LINE ? 0 : (TEST_MODE ? Infinity : MAX_DRAWS);
 /* 兩家商號各自一版,不會同時出現。網址加 ?shop=haolilai 或 ?shop=benzun 決定是哪一家 */
 const SHOPS = {
   haolilai: { name: "好利來",     title: "好利連連來", img: "assets/haolilai.png?v=2", big: "assets/og_haolilai.jpg", round: true },   // 圓的
@@ -507,6 +509,7 @@ const state = { used: 0, total: 0, spinning: false };
 
 function setMsg(t, win) { const m = el("msg"); m.className = "msg" + (win ? " win" : ""); m.textContent = t; void m.offsetWidth; }
 function refresh() {
+  if (LINE) { if (window.LINEMODE) LINEMODE.refresh(); return; }
   el("counter").textContent = TEST_MODE ? "測試機 第 " + state.used + " 抽" : "抽獎 " + state.used + "/" + MAX_DRAWS;
   el("pull").disabled = state.spinning || state.used >= LIMIT;
   el("pull").textContent = state.used >= LIMIT && !state.spinning ? "抽完了" : "拉!";
@@ -526,10 +529,15 @@ function hideJackpot() { clearTimeout(showTimer); el("show").classList.remove("o
 function lamps(on) { el("lampL").classList.toggle("on", on); el("lampR").classList.toggle("on", on); }
 
 function pull() {
+  if (LINE) { if (window.LINEMODE) LINEMODE.pull(); return; }
   if (state.spinning || state.used >= LIMIT) return;
   hideJackpot(); audio(); sfx.pull();
-  state.spinning = true; state.used++;
-  const res = decideResult();
+  state.used++;
+  startSpin(decideResult());
+}
+/* 播一轉的動畫;res = { symbols: [a, b, c], prize, win }(本機決定或老賈回來的) */
+function startSpin(res) {
+  state.spinning = true;
   refresh(); lamps(true); setMsg("轉動中…");
   const lv = el("lever"); lv.classList.add("pulled"); setTimeout(() => lv.classList.remove("pulled"), 260);
 
@@ -576,6 +584,7 @@ function finish() {
     sfx.win(res.prize >= 300); confetti(res.prize >= 300 ? 120 : 50);
   } else { setMsg(state.used >= LIMIT ? "可惜沒中" : "差一點,再來!"); sfx.miss(); }
 
+  if (LINE) { refresh(); if (window.LINEMODE) LINEMODE.afterFinish(res); return; }
   if (state.used >= LIMIT) {
     setTimeout(() => setMsg(state.total > 0 ? "抽完了,共獲得星幣 " + state.total : "抽完了,下次再來", state.total > 0), 1400);
   }
@@ -644,6 +653,15 @@ if (CARD_MODE) {
 }
 /* 測試用:讓自動化檢查讀得到狀態 */
 window.__slot = { state: state, reels: reels, SYMBOLS: SYMBOLS, SPRITES: SPRITES, SHOP_ID: SHOP_ID, decideResult: decideResult, drawReel: drawReel };
+/* LINE 模式:載入 line.js(加時間避開快取),它接手次數、綁定、問老賈結果 */
+if (LINE) {
+  window.__slotApi = { state: state, el: el, setMsg: setMsg, startSpin: startSpin, refresh: refresh, audio: audio, sfx: sfx, hideJackpot: hideJackpot,
+                       setLimit: n => { LIMIT = n; }, getLimit: () => LIMIT, SHOP_ID: SHOP_ID, SHOP: SHOP };
+  document.querySelector(".tools").style.display = "none";
+  el("audition").style.display = "none";
+  el("pull").disabled = true; el("counter").textContent = "連線中…"; setMsg("正在確認您的 LINE…");
+  const s = document.createElement("script"); s.src = "line.js?t=" + Date.now(); document.body.appendChild(s);
+}
 </script>
 </body>
 </html>
