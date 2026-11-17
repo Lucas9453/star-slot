@@ -1,6 +1,7 @@
 /* LINE 正式版模式(index.html?line=1 才載入)。261117
-   - 身分:LIFF 拿 LINE 的 ID token,每次呼叫老賈都帶著，老賈自己去 LINE 驗，只認驗回來的人
-   - 次數、結果、記帳都在老賈(jarvis /slot/api/*);這裡只負責畫面
+   - 身分:LIFF 拿 LINE 的 ID token,每次呼叫伺服器都帶著，伺服器自己去 LINE 驗，只認驗回來的人
+   - 次數、結果、記帳都在 Mac mini 活動服務(/slot/api/*,261117 由老賈 jarvis 搬過去);這裡只負責畫面
+   - 連不到 / 伺服器回維護中 → 一律顯示 MAINT 那句(261117 Tai 拷問第 4 題),客人畫面不出現「老賈」
    規格:cowork-workspace/02_留存紀錄/261116_star_slot/spec_binding_spin_261117.md */
 (function () {
   "use strict";
@@ -12,13 +13,14 @@
   const LIFF_ID = BIND_MODE ? "2012655139-D8LHZbUz" : "2012655139-xhvnmiTV";
   /* 本機測試才有的開關:localhost 上可用 &api= 指到本機假伺服器、&mockliff=<假 token> 跳過 LINE 登入 */
   const LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-  const API = LOCAL && QS.get("api") ? QS.get("api") : "https://parchment-bullhorn-shivering.ngrok-free.dev/slot/api/";
+  const API = LOCAL && QS.get("api") ? QS.get("api") : "https://baton-alkalize-tamale.ngrok-free.dev/slot/api/";
   if (LOCAL && QS.get("mockliff")) {
     window.liff = { init: async () => {}, isLoggedIn: () => true, getIDToken: () => QS.get("mockliff"), login() {}, logout() {} };
   }
   const A = window.__slotApi;
   const SHOPN = A.SHOP.name;
   const CS = SHOPN + "客服";   /* 261117 Tai:客服一律寫商號客服，不用通稱(好利來客服 / 本尊吉客發客服) */
+  const MAINT = "系統維護中,請稍後再試。您的拉霸次數都保留著,不會減少。如有問題請洽" + CS;
   const st = A.state, el = A.el;
   const acct = { ready: false, bound: false, status: "", role: "", total: 0, used: 0, remaining: 0 };
   let idToken = "", busy = false, auto = false, sessionSpins = 0, sessionPrize = 0;
@@ -77,15 +79,15 @@
         const r = await fetch(API + path, {
           method: "POST", mode: "cors", cache: "no-store",
           headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
-          body: JSON.stringify(Object.assign({ idToken: idToken }, body || {}))
+          body: JSON.stringify(Object.assign({ idToken: idToken, shop: A.SHOP_ID }, body || {}))
         });
         let j = {};
-        try { j = await r.json(); } catch (e) { j = { ok: false, error: "老賈回應格式不對(" + r.status + ")" }; }
+        try { j = await r.json(); } catch (e) { j = { ok: false, error: MAINT }; }   /* 伺服器沒開時 ngrok 回的是網頁不是 JSON */
         j._status = r.status;
         if (r.status === 401 && j.relogin && i === 0) { liff.logout(); liff.login({ redirectUri: location.href }); return j; }
         return j;
       } catch (e) {
-        if (i === tries - 1) return { ok: false, error: "連不到老賈，請稍後再試", _status: 0 };
+        if (i === tries - 1) return { ok: false, error: MAINT, _status: 0 };
         await new Promise(res => setTimeout(res, 1200));
       }
     }
@@ -231,7 +233,7 @@
       idToken = liff.getIDToken() || "";
       if (!idToken) { fail("拿不到 LINE 身分，請從" + SHOPN + " LINE 選單重新進來"); return; }
       const j = await api("me");
-      if (!j.ok) { fail(j.error || "連不到老賈，請稍後再試"); return; }
+      if (!j.ok) { fail(j.error || MAINT); return; }
       apply(j);
       if (!j.bound) { el("counter").textContent = "請先綁定"; A.setMsg("請先綁定遊戲角色"); showBind(); }
       else if (j.status === "通過" && BIND_MODE) bindDone(true);   /* 卡片入口:已綁定就只告知,不給重綁、不出機台 */
