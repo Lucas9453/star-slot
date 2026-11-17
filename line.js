@@ -4,8 +4,12 @@
    規格:cowork-workspace/02_留存紀錄/261116_star_slot/spec_binding_spin_261117.md */
 (function () {
   "use strict";
-  const LIFF_ID = "2012655139-xhvnmiTV";   /* LINE Login 頻道「拉霸登入測試」(Provider 拉霸測試)的 LIFF「好利連連來拉霸」 */
   const QS = new URLSearchParams(location.search);
+  /* 兩個入口(261117 Tai:綁好再點卡片不能重綁、不出現機台):
+     卡片 → LIFF「好利連連來綁定」(endpoint 帶 mode=bind),只管綁定;選單 → LIFF「好利連連來拉霸」,玩。
+     兩個都在 LINE Login 頻道「拉霸登入測試」(2012655139)底下,ID token 老賈照樣驗得過 */
+  const BIND_MODE = QS.get("mode") === "bind";
+  const LIFF_ID = BIND_MODE ? "2012655139-D8LHZbUz" : "2012655139-xhvnmiTV";
   /* 本機測試才有的開關:localhost 上可用 &api= 指到本機假伺服器、&mockliff=<假 token> 跳過 LINE 登入 */
   const LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const API = LOCAL && QS.get("api") ? QS.get("api") : "https://parchment-bullhorn-shivering.ngrok-free.dev/slot/api/";
@@ -182,10 +186,10 @@
     };
   }
   /* 261117 Tai:「送出綁定後 不要有拉霸的畫面出現」→ 綁好只顯示完成與次數,要玩從選單再進來 */
-  function bindDone() {
+  function bindDone(already) {
     acct.ready = false; refresh();
-    overlay("<h2>綁定完成</h2><div class=\"lm-big\">" + esc(acct.role) + "</div>" +
-      "<div>您的遊戲角色已經和 LINE 帳號完成綁定囉！" +
+    overlay("<h2>" + (already ? "您已完成綁定" : "綁定完成") + "</h2><div class=\"lm-big\">" + esc(acct.role) + "</div>" +
+      "<div>" + (already ? "您的 LINE 帳號已經綁定這個遊戲角色囉！如需更換，請聯繫" + CS + "。" : "您的遊戲角色已經和 LINE 帳號完成綁定囉！") +
       (acct.remaining > 0 ? "目前可以轉 " + acct.remaining + " 次，" : "目前還沒有回饋次數，累計儲值滿額後就會自動增加，") +
       "請從" + SHOPN + " LINE 下方選單進入拉霸，就可以開始轉囉！</div>" +
       '<button id="lmclose">好</button>');
@@ -231,6 +235,7 @@
       if (!j.ok) { fail(j.error || "連不到老賈，請稍後再試"); return; }
       apply(j);
       if (!j.bound) { el("counter").textContent = "請先綁定"; A.setMsg("請先綁定遊戲角色"); showBind(); }
+      else if (j.status === "通過" && BIND_MODE) bindDone(true);   /* 卡片入口:已綁定就只告知,不給重綁、不出機台 */
       else if (j.status === "通過") welcome();
       else showWait(j.status === "衝突");
     } catch (e) {
