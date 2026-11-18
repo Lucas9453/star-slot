@@ -24,6 +24,7 @@
   const st = A.state, el = A.el;
   const acct = { ready: false, bound: false, status: "", role: "", total: 0, used: 0, remaining: 0 };
   let idToken = "", busy = false, auto = false, sessionSpins = 0, sessionPrize = 0;
+  let toAck = null;   /* 261118 斷線補看:這一轉動畫播完後要告訴主機「看過了」 */
 
   /* ---------- 樣式與元件 ---------- */
   const css = document.createElement("style");
@@ -46,7 +47,11 @@
                     color: #4a2500; background: #f7c531; box-shadow: inset 0 -4px 0 #b8860b; letter-spacing: 0.15em; }
   .lm-card button:disabled { background: #7a6a5a; color: #3a3030; box-shadow: none; }
   .lm-card .err { color: #ff8a8a; min-height: 1.4em; margin-top: 6px; }
-  .lm-big { font-size: 34px; color: #ffd83d; text-align: center; margin: 8px 0; }`;
+  .lm-big { font-size: 34px; color: #ffd83d; text-align: center; margin: 8px 0; }
+  .lm-list { margin: 8px 0; padding: 0; list-style: none; }
+  .lm-list li { padding: 6px 4px; border-bottom: 1px dashed #7a3b00; }
+  .lm-list .win { color: #ffd83d; }
+  .lm-list .no { color: #c9b8a8; font-weight: 500; }`;
   document.head.appendChild(css);
 
   const info = document.createElement("div");
@@ -124,10 +129,19 @@
       A.setMsg(j.error || "這一轉沒成功，請再按一次"); refresh(); return;
     }
     apply(j); sessionSpins++; sessionPrize += j.result.prize || 0;
+    toAck = j.spinNo || null;
     A.startSpin(j.result);
   }
 
+  /* 261118 斷線補看:動畫播完才算客人看過;送失敗沒關係,下次打開會再補跳 */
+  function ackSeen(nos) {
+    nos = (nos || []).filter(n => n);
+    if (!nos.length) return Promise.resolve();
+    return api("seen", { spinNos: nos }, 1).catch(() => {});
+  }
+
   function afterFinish(res) {
+    if (toAck) { ackSeen([toAck]); toAck = null; }
     if (acct.remaining <= 0) {
       auto = false;
       setTimeout(() => {
@@ -205,6 +219,24 @@
     if (conflict) overlay("<h2>需要" + CS + "協助</h2><div>這個角色已經綁定過了。我們已通知" + CS + "，會盡快協助您確認。</div>");
     else overlay("<h2>收到囉</h2><div>謝謝您！我們正在幫您核對資料，確認好之後，從" + SHOPN + " LINE 選單進來就可以開始。</div>");
   }
+  /* 261118 斷線補看:主機記了、客人沒看到的轉(連線中斷),打開時先逐筆列出,按「好」才進正常畫面 */
+  function showUnseen(list, then) {
+    const won = list.filter(u => u.win || u.prize > 0);
+    const sum = won.reduce((a, u) => a + (u.prize || 0), 0);
+    overlay("<h2>上次連線中斷時的結果</h2>" +
+      (sum > 0 ? '<div class="lm-big">中獎 星幣 ' + sum + "</div>" : "") +
+      "<div>上次轉的時候網路斷了，下面這 " + list.length + " 轉的結果都有記錄下來：</div>" +
+      '<ul class="lm-list">' + list.map(u => "<li>第 " + esc(u.spinNo) + " 轉 " + esc((u.names || []).join(" ")) + "，" +
+        (u.win || u.prize > 0 ? '<span class="win">中 ' + esc(u.prize) + " 星幣</span>" : '<span class="no">沒中</span>') + "</li>").join("") + "</ul>" +
+      (sum > 0 ? "<div>中獎回饋會由" + CS + "確認後發放。</div>" : "") +
+      '<button id="lmseen">好</button>');
+    document.getElementById("lmseen").onclick = async (e) => {
+      e.target.disabled = true;
+      await ackSeen(list.map(u => u.spinNo));
+      then();
+    };
+  }
+
   function welcome() {
     stageEl.style.visibility = "visible";        /* 通過的人才看得到拉霸機 */
     acct.ready = true; refresh();
@@ -237,6 +269,7 @@
       apply(j);
       if (!j.bound) { el("counter").textContent = "請先綁定"; A.setMsg("請先綁定遊戲角色"); showBind(); }
       else if (j.status === "通過" && BIND_MODE) bindDone(true);   /* 卡片入口:已綁定就只告知,不給重綁、不出機台 */
+      else if (j.status === "通過" && j.unseen && j.unseen.length) showUnseen(j.unseen, welcome);
       else if (j.status === "通過") welcome();
       else showWait(j.status === "衝突");
     } catch (e) {
