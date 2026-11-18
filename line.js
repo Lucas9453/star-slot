@@ -226,7 +226,7 @@
     overlay("<h2>上次連線中斷時的結果</h2>" +
       (sum > 0 ? '<div class="lm-big">中獎 星幣 ' + sum + "</div>" : "") +
       "<div>上次轉的時候網路斷了，下面這 " + list.length + " 轉的結果都有記錄下來：</div>" +
-      '<ul class="lm-list">' + list.map(u => "<li>第 " + esc(u.spinNo) + " 轉 " + esc((u.names || []).join(" ")) + "，" +
+      '<ul class="lm-list">' + list.map(u => "<li>" + esc((u.names || []).join(" ")) + "，" +   /* 261118 Tai「照建議 拿掉」:不顯示全站序號 */
         (u.win || u.prize > 0 ? '<span class="win">中 ' + esc(u.prize) + " 星幣</span>" : '<span class="no">沒中</span>') + "</li>").join("") + "</ul>" +
       (sum > 0 ? "<div>中獎回饋會由" + CS + "確認後發放。</div>" : "") +
       '<button id="lmseen">好</button>');
