@@ -143,7 +143,6 @@
 </div>
 <div class="tools">
   <button id="mute">音效:開</button>
-  <button id="shop">換商號(測試用)</button>
   <button id="reset">重置(測試用)</button>
 </div>
 
@@ -192,10 +191,10 @@ const TEST_MODE = true;
 /* LINE 正式版模式(網址加 &line=1,從 LINE 圖文選單經 LIFF 進來):結果由老賈決定、次數看老賈的帳,程式在 line.js */
 const LINE = new URLSearchParams(location.search).get("line") === "1";
 let LIMIT = LINE ? 0 : (TEST_MODE ? Infinity : MAX_DRAWS);
-/* 兩家商號各自一版,不會同時出現。網址加 ?shop=haolilai 或 ?shop=benzun 決定是哪一家 */
+/* 這個網域(haolilai.com.tw)只放好利來。本尊吉客發那一版 261119 從線上拿掉(Tai「暫時不會使用」),
+   要拿回來看 git tag with-benzun-261119;之後本尊用自己的網域。認不得的 ?shop= 一律當好利來 */
 const SHOPS = {
-  haolilai: { name: "好利來",     title: "好利連連來", img: "assets/haolilai.png?v=2", big: "assets/og_haolilai.jpg", round: true },   // 圓的
-  benzun:   { name: "本尊吉客發", title: "大獎吉客發", img: "assets/benzun.png",       big: "assets/og_benzun.jpg",   round: false }   // 方的
+  haolilai: { name: "好利來",     title: "好利連連來", img: "assets/haolilai.png?v=2", big: "assets/og_haolilai.jpg", round: true }   // 圓的
 };
 const SHOP_ID = (function () {
   const q = new URLSearchParams(location.search).get("shop");
@@ -634,7 +633,6 @@ el("audition").addEventListener("click", e => {
   audio();
   if (s === "tease") sfx.tease(0, 1.75); else if (s === "miss") sfx.miss(); else if (s === "small") sfx.win(false); else if (s === "big") sfx.win(true); else if (s === "A") sfx.jackpot(); else sfx.jackpotB();
 });
-el("shop").addEventListener("click", () => { location.search = "?shop=" + (SHOP_ID === "haolilai" ? "benzun" : "haolilai"); });
 el("mute").addEventListener("click", () => { muted = !muted; el("mute").textContent = "音效:" + (muted ? "關" : "開"); });
 addEventListener("keydown", e => { if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); pull(); } });
 
