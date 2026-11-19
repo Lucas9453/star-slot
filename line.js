@@ -8,9 +8,10 @@
   const QS = new URLSearchParams(location.search);
   /* 兩個入口(261117 Tai:綁好再點卡片不能重綁、不出現機台):
      卡片 → LIFF「好利連連來綁定」(endpoint 帶 mode=bind),只管綁定;選單 → LIFF「好利連連來拉霸」,玩。
-     兩個都在 LINE Login 頻道「拉霸登入測試」(2012655139)底下,ID token 老賈照樣驗得過 */
+     261119 換好利來:兩個都在提供者「好利來」的 LINE Login 頻道「好利來」(2012697933)底下
+     (奧創時期是「拉霸登入測試」2012655139:綁定 D8LHZbUz / 拉霸 xhvnmiTV,已停用) */
   const BIND_MODE = QS.get("mode") === "bind";
-  const LIFF_ID = BIND_MODE ? "2012655139-D8LHZbUz" : "2012655139-xhvnmiTV";
+  const LIFF_ID = BIND_MODE ? "2012697933-r4l8Cx0x" : "2012697933-4BH2qxI8";
   /* 本機測試才有的開關:localhost 上可用 &api= 指到本機假伺服器、&mockliff=<假 token> 跳過 LINE 登入 */
   const LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   const API = LOCAL && QS.get("api") ? QS.get("api") : "https://baton-alkalize-tamale.ngrok-free.dev/slot/api/";
