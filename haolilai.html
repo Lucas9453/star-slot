@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>好利連連來</title>
+<meta name="description" content="拉一把,試試手氣">
+<meta property="og:type" content="website">
+<meta property="og:title" content="好利連連來">
+<meta property="og:description" content="拉一把,試試手氣">
+<meta property="og:image" content="https://haolilai.com.tw/assets/og_haolilai.jpg">
+<style>
+  html, body { margin: 0; height: 100%; background: #1a1040; overflow: hidden; }
+  iframe { border: 0; width: 100%; height: 100%; display: block; }
+</style>
+</head>
+<body>
+<!-- 入口頁:只負責連結預覽的標題和圖,遊戲本體在 index.html -->
+<!-- 網址後面加時間,瀏覽器才不會拿舊的遊戲檔出來用 -->
+<iframe id="g" title="好利連連來" allow="autoplay"></iframe>
+<script>document.getElementById("g").src = "./?shop=haolilai&t=" + Date.now();</script>
+</body>
+</html>
