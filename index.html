@@ -403,6 +403,14 @@ function beep(freq, dur, type, vol, delay, freq2) {
   g.gain.setValueAtTime(vol || 0.1, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02);
 }
+/* 切掉已排程的音:舊的總音量節點拔掉,換一個新的(已排好的轉輪聲接在舊節點上,就不會再響) */
+function hush() {
+  if (!actx || !master) return;
+  try { master.disconnect(); } catch (e) {}
+  const comp = actx.createDynamicsCompressor();
+  master = actx.createGain(); master.gain.value = 0.9;
+  master.connect(comp); comp.connect(actx.destination);
+}
 function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
 const sfx = {
   pull() { noise(0.06, 0.25, 0, 1500); beep(260, 0.07, "square", 0.18, 0, 130); beep(130, 0.16, "sine", 0.55, 0.05, 65); },   // 喀 + 咚,不用鋸齒波(聽起來像屁聲)
@@ -527,8 +535,8 @@ function showJackpot(prize) {
 function hideJackpot() { clearTimeout(showTimer); el("show").classList.remove("on"); }
 function lamps(on) { el("lampL").classList.toggle("on", on); el("lampR").classList.toggle("on", on); }
 
-function pull() {
-  if (LINE) { if (window.LINEMODE) LINEMODE.pull(); return; }
+function pull(e) {
+  if (LINE) { if (window.LINEMODE) LINEMODE.pull(!!(e && e.currentTarget === el("pull"))); return; }
   if (state.spinning || state.used >= LIMIT) return;
   hideJackpot(); audio(); sfx.pull();
   state.used++;
@@ -556,6 +564,13 @@ function startSpin(res) {
   requestAnimationFrame(tick);
   /* 保險:畫面被蓋住時瀏覽器會停掉動畫,時間到就直接停在結果,不會卡在「轉動中」 */
   setTimeout(() => { if (state.spinning) tick(performance.now()); }, durs[2] + 400);
+}
+
+/* 立刻停輪:輪子跳到這一轉的結果,不播中獎特效、不掉獎品、不叫 finish */
+function stopSpin() {
+  if (!state.spinning) return;
+  reels.forEach(r => { if (r.anim && !r.anim.done) { r.pos = r.anim.target; r.anim.done = true; drawReel(r); } });
+  hush(); sfx.stop(); state.spinning = false; lamps(false); refresh();
 }
 
 function finish() {
@@ -653,7 +668,7 @@ if (CARD_MODE) {
 window.__slot = { state: state, reels: reels, SYMBOLS: SYMBOLS, SPRITES: SPRITES, SHOP_ID: SHOP_ID, decideResult: decideResult, drawReel: drawReel };
 /* LINE 模式:載入 line.js(加時間避開快取),它接手次數、綁定、問伺服器結果 */
 if (LINE) {
-  window.__slotApi = { state: state, el: el, setMsg: setMsg, startSpin: startSpin, refresh: refresh, audio: audio, sfx: sfx, hideJackpot: hideJackpot,
+  window.__slotApi = { state: state, el: el, setMsg: setMsg, startSpin: startSpin, stopSpin: stopSpin, refresh: refresh, audio: audio, sfx: sfx, hideJackpot: hideJackpot,
                        setLimit: n => { LIMIT = n; }, getLimit: () => LIMIT, SHOP_ID: SHOP_ID, SHOP: SHOP };
   document.querySelector(".tools").style.display = "none";
   el("audition").style.display = "none";
